@@ -6,10 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Personal Flow Calendar</title>
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=1.0">
+    <link rel="stylesheet" href="style.css?v=1.1">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -19,7 +17,6 @@
 
 <body>
     <div class="app-container">
-        <!-- Top Navigation -->
         <nav class="top-navigation">
             <div class="nav-layer-month">
                 <button class="nav-btn" id="btnPrevMonth">←</button>
@@ -102,7 +99,6 @@
             </div>
         </nav>
 
-        <!-- List Header -->
         <div class="list-header grid-layout" id="listHeader">
             <div class="col-date">DATE</div>
             <div class="col-income">INCOME</div>
@@ -121,22 +117,18 @@
             <div>SAT</div>
         </div>
 
-        <!-- Main Content Container -->
         <div class="timeline-container" id="timelineContainer">
-            <!-- Timeline View -->
             <div id="listViewWrapper">
                 <div id="topLoadingTrigger" class="loading-trigger">Loading history...</div>
                 <div class="planning-list" id="planningList"></div>
                 <div id="bottomLoadingTrigger" class="loading-trigger">Loading future...</div>
             </div>
 
-            <!-- Calendar View -->
             <div id="calendarViewContainer" class="calendar-view-container hidden">
                 <div id="mainCalendarGrid" class="main-calendar-grid"></div>
             </div>
         </div>
 
-        <!-- Footer Summary & Editor -->
         <footer class="bottom-summary-bar" id="mainFooter">
             <div class="footer-left-controls">
                 <div class="summary-left" id="btnToggleMode">
@@ -165,6 +157,7 @@
                             <input type="number" class="mini-input" id="footerInc" placeholder="Inc">
                             <input type="number" class="mini-input" id="footerExp" placeholder="Exp">
                             <input type="text" class="mini-input note" id="footerNote" placeholder="Note">
+                            <button class="btn-mini-magic" id="footerBtnSmart" title="Smart Add">✨</button>
                             <button class="btn-mini-add" id="footerBtnAdd">+</button>
                         </div>
                         <div id="btnCloseEditor" class="btn-mini-close">✕</div>
@@ -180,13 +173,57 @@
         </footer>
     </div>
 
-    <!-- Overlay: Transactions Filter -->
+    <div id="smartAddOverlay" class="overlay hidden" style="z-index: 500;">
+        <div class="login-card">
+            <div id="btnSmartClose" class="btn-close-card">✕</div>
+            <div class="overlay-title clean-font" style="color: #000; margin-top: 20px; text-align: center;">
+                SMART ADD
+            </div>
+            
+            <div class="smart-preview-box">
+                <div id="smartPreviewDate" class="sp-date">Starting: 2025-01-01</div>
+                <div class="sp-details">
+                    <span id="smartPreviewInc" class="sp-inc"></span>
+                    <span id="smartPreviewExp" class="sp-exp"></span>
+                    <span id="smartPreviewNote" class="sp-note"></span>
+                </div>
+            </div>
+
+            <div class="smart-form">
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <div class="chip-selector" id="smartFreqSelector">
+                        <div class="s-chip" data-val="daily">Daily</div>
+                        <div class="s-chip" data-val="weekly">Weekly</div>
+                        <div class="s-chip active" data-val="monthly">Monthly</div>
+                        <div class="s-chip" data-val="yearly">Yearly</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Repeat For</label>
+                    <div class="input-row">
+                        <input type="number" id="smartCountInput" class="smart-input" value="12">
+                        <span class="input-unit">Times</span>
+                    </div>
+                </div>
+                
+                <div class="smart-summary" id="smartSummaryText">
+                    Adding 12 transactions...
+                </div>
+
+                <button id="btnSmartConfirm" class="btn-black" style="width: 100%; margin-top: 10px;">
+                    GENERATE FLOW
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="filterOverlay" class="overlay hidden" style="z-index: 250;">
         <div class="overlay-header">
             <div class="overlay-title">TRANSACTIONS</div>
             <div id="btnFilterClose" class="btn-close">✕</div>
         </div>
-        <!-- Advanced Filter Controls -->
         <div class="filter-controls">
             <div class="filter-search-wrapper">
                 <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -206,7 +243,6 @@
         <div class="filter-list-container" id="filterListContainer"></div>
     </div>
 
-    <!-- Overlay: Date Range Picker -->
     <div id="dateRangeOverlay" class="overlay hidden" style="z-index: 350;">
         <div class="picker-card">
             <div class="picker-header">
@@ -233,7 +269,6 @@
         </div>
     </div>
 
-    <!-- Overlay: Login -->
     <div id="loginOverlay" class="overlay hidden" style="z-index: 300;">
         <div class="login-card">
             <div id="btnLoginClose" class="btn-close-card">✕</div>
@@ -262,7 +297,6 @@
         </div>
     </div>
 
-    <!-- Overlay: User Profile -->
     <div id="userProfileOverlay" class="overlay hidden" style="z-index: 310;">
         <div class="login-card profile-card-layout">
             <div id="btnProfileClose" class="btn-close-card">✕</div>
@@ -308,11 +342,10 @@
                 </button>
             </div>
             
-            <div class="app-version">Personal Flow v1.0</div>
+            <div class="app-version">Personal Flow v1.1</div>
         </div>
     </div>
 
-    <!-- Overlay: Sync Confirmation -->
     <div id="syncOverlay" class="overlay hidden" style="z-index: 400;">
         <div class="login-card">
             <div class="overlay-title clean-font" style="color: #000; margin-bottom: 10px; text-align: center; margin-top: 20px;">
@@ -335,7 +368,6 @@
         </div>
     </div>
 
-    <!-- Undo Toast -->
     <div id="undoToast" class="undo-toast hidden">
         <span id="undoText">Transaction deleted</span>
         <button id="btnUndo" class="btn-undo" title="Undo">
@@ -346,7 +378,6 @@
         </button>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -373,8 +404,7 @@
         window.getDoc = getDoc;
     </script>
 
-    <!-- Main App Logic -->
-    <script src="app.js?v=1.0"></script>
+    <script src="app.js?v=1.1"></script>
 </body>
 
 </html>
