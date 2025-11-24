@@ -37,8 +37,10 @@ let tempStart = null;
 let tempEnd = null;
 let pickerHasInteracted = false;
 
-// Smart Add State
-let smartAddContext = null; // { dateStr, inc, exp, note, source }
+// Recurring State
+let recurType = 'expense';
+let recurFreq = 'weekly';
+let recurSelectedDays = new Set(); // Weekly selection (0-6)
 
 // Filter State
 let filterSearchText = '';
@@ -72,7 +74,7 @@ const filterOverlay = getEl('filterOverlay');
 const userProfileOverlay = getEl('userProfileOverlay');
 const loginOverlay = getEl('loginOverlay');
 const dateRangeOverlay = getEl('dateRangeOverlay');
-const smartAddOverlay = getEl('smartAddOverlay');
+const recurringOverlay = getEl('recurringOverlay');
 
 let currentUser = null;
 
@@ -456,7 +458,6 @@ function renderInlineDetails(wrapper, dateStr) {
             <input type="number" class="quick-input-field inc" id="inc-${dateStr}" placeholder="Inc">
             <input type="number" class="quick-input-field exp" id="exp-${dateStr}" placeholder="Exp">
             <input type="text" class="quick-input-field note" id="note-${dateStr}" placeholder="Note">
-            <button class="btn-quick-magic" title="Smart Add">✨</button>
             <button class="btn-quick-add">+</button>
         `;
         
@@ -466,16 +467,10 @@ function renderInlineDetails(wrapper, dateStr) {
             addTransactionUnified(dateStr, 'timeline', wrapper);
         };
 
-        // Bind Smart Add
-        inputRow.querySelector('.btn-quick-magic').onclick = (e) => {
-            e.stopPropagation();
-            prepareSmartAdd(dateStr, 'timeline');
-        };
-
         inputRow.querySelectorAll('input').forEach(inp => {
             inp.onkeydown = (e) => {
                 if (e.key === 'Enter') addTransactionUnified(dateStr, 'timeline', wrapper);
-            }
+            };
         });
         wrapper.querySelector('.row-details').appendChild(inputRow);
     }
@@ -646,12 +641,6 @@ function updateFooterEditor(dateStr) {
         list.appendChild(chip);
     });
     
-    // Bind Smart Add
-    const btnSmart = getEl('footerBtnSmart');
-    const newBtnSmart = btnSmart.cloneNode(true);
-    btnSmart.parentNode.replaceChild(newBtnSmart, btnSmart);
-    newBtnSmart.onclick = () => prepareSmartAdd(dateStr, 'footer');
-
     // Bind Standard Add
     const btnAdd = getEl('footerBtnAdd');
     const newBtn = btnAdd.cloneNode(true);
@@ -1101,19 +1090,59 @@ function setupUI() {
     document.body.onclick = () => getEl('flowDropdown')?.classList.add('hidden');
     const btnAdd = getEl('btnAddFlow'); if (btnAdd) btnAdd.onclick = () => { const id = 'f_' + Date.now(); appData.flows[id] = { name: 'Untitled Flow', transactions: [] }; appData.currentFlowId = id; saveData(); updateFlowUI(); resetViewAroundDate(new Date(), 'auto'); getEl('flowDropdown')?.classList.add('hidden'); startEditingFlowName(); };
     
-    // Smart Add UI Bindings
-    getEl('btnSmartClose').onclick = () => smartAddOverlay.classList.add('hidden');
-    
-    document.querySelectorAll('.s-chip').forEach(chip => {
-        chip.onclick = () => {
-            document.querySelectorAll('.s-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            updateSmartSummary();
+    // Recurring UI Bindings
+    const btnOpenRecurring = getEl('btnOpenRecurringOverlay');
+    if (btnOpenRecurring) {
+        btnOpenRecurring.onclick = () => {
+            getEl('flowDropdown')?.classList.add('hidden');
+            prepareRecurringOverlay();
+        };
+    }
+
+    const btnRecurClose = getEl('btnRecurClose');
+    if (btnRecurClose) {
+        btnRecurClose.onclick = () => recurringOverlay?.classList.add('hidden');
+    }
+
+    const incomeBtn = getEl('rtIncome');
+    const expenseBtn = getEl('rtExpense');
+    if (incomeBtn && expenseBtn) {
+        incomeBtn.onclick = () => setRecurType('income');
+        expenseBtn.onclick = () => setRecurType('expense');
+    }
+
+    document.querySelectorAll('.freq-tab').forEach(tab => {
+        tab.onclick = () => {
+            document.querySelectorAll('.freq-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            recurFreq = tab.dataset.tab;
+            updateRecurFormVisibility();
+            updateRecurSummary();
         };
     });
 
-    getEl('smartCountInput').oninput = updateSmartSummary;
-    getEl('btnSmartConfirm').onclick = executeSmartAdd;
+    document.querySelectorAll('.day-circle').forEach(circle => {
+        circle.onclick = () => {
+            circle.classList.toggle('selected');
+            const day = parseInt(circle.dataset.d, 10);
+            if (recurSelectedDays.has(day)) {
+                recurSelectedDays.delete(day);
+            } else {
+                recurSelectedDays.add(day);
+            }
+            updateRecurSummary();
+        };
+    });
+
+    const monthDayInput = getEl('recurMonthDay');
+    if (monthDayInput) monthDayInput.oninput = updateRecurSummary;
+    ['recurAmount', 'recurNote', 'recurStartDate', 'recurEndDate'].forEach(id => {
+        const field = getEl(id);
+        if (field) field.oninput = updateRecurSummary;
+    });
+
+    const btnRecurConfirm = getEl('btnRecurConfirm');
+    if (btnRecurConfirm) btnRecurConfirm.onclick = executeRecurringAdd;
 
     setupNavDropdown(); 
     const btnUndo = getEl('btnUndo');
@@ -1626,119 +1655,225 @@ function updateScrollbarWidth() {
     document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
 }
 
-// --- [New Feature] Smart Add Logic ---
-function prepareSmartAdd(dateStr, source) {
-    let inc, exp, note;
-    if (source === 'footer') {
-        inc = parseFloat(getEl('footerInc').value) || 0;
-        exp = parseFloat(getEl('footerExp').value) || 0;
-        note = getEl('footerNote').value.trim();
-    } else {
-        inc = parseFloat(document.getElementById(`inc-${dateStr}`).value) || 0;
-        exp = parseFloat(document.getElementById(`exp-${dateStr}`).value) || 0;
-        note = document.getElementById(`note-${dateStr}`).value.trim();
+// --- Recurring Rule Logic ---
+function prepareRecurringOverlay() {
+    recurType = 'expense';
+    recurFreq = 'weekly';
+    recurSelectedDays = new Set([1]); // Default to Monday
+
+    const amountInput = getEl('recurAmount');
+    if (amountInput) amountInput.value = '';
+    const noteInput = getEl('recurNote');
+    if (noteInput) noteInput.value = '';
+
+    document.querySelectorAll('.freq-tab').forEach(tab => tab.classList.remove('active'));
+    const weeklyTab = document.querySelector('.freq-tab[data-tab="weekly"]');
+    if (weeklyTab) weeklyTab.classList.add('active');
+
+    document.querySelectorAll('.day-circle').forEach(circle => {
+        circle.classList.remove('selected');
+        if (parseInt(circle.dataset.d, 10) === 1) circle.classList.add('selected');
+    });
+
+    const monthDayInput = getEl('recurMonthDay');
+    const today = new Date();
+    if (monthDayInput) monthDayInput.value = today.getDate();
+
+    const startInput = getEl('recurStartDate');
+    const endInput = getEl('recurEndDate');
+    if (startInput) startInput.valueAsDate = today;
+    if (endInput) {
+        const nextYear = new Date(today);
+        nextYear.setFullYear(today.getFullYear() + 1);
+        endInput.valueAsDate = nextYear;
     }
 
-    if (!inc && !exp && !note) {
-        alert("Please enter at least an amount or note to create a smart recurring transaction.");
+    setRecurType('expense');
+    updateRecurFormVisibility();
+    updateRecurSummary();
+    recurringOverlay?.classList.remove('hidden');
+}
+
+function setRecurType(type) {
+    recurType = type === 'income' ? 'income' : 'expense';
+    const incomeBtn = getEl('rtIncome');
+    const expenseBtn = getEl('rtExpense');
+    if (incomeBtn && expenseBtn) {
+        if (recurType === 'income') {
+            incomeBtn.classList.add('active');
+            expenseBtn.classList.remove('active');
+        } else {
+            incomeBtn.classList.remove('active');
+            expenseBtn.classList.add('active');
+        }
+    }
+    updateRecurSummary();
+}
+
+function updateRecurFormVisibility() {
+    const weekly = getEl('optWeekly');
+    const monthly = getEl('optMonthly');
+    const daily = getEl('optDaily');
+    weekly?.classList.add('hidden');
+    monthly?.classList.add('hidden');
+    daily?.classList.add('hidden');
+
+    if (recurFreq === 'weekly') weekly?.classList.remove('hidden');
+    if (recurFreq === 'monthly') monthly?.classList.remove('hidden');
+    if (recurFreq === 'daily') daily?.classList.remove('hidden');
+}
+
+function updateRecurSummary() {
+    const summaryEl = getEl('recurSummary');
+    if (!summaryEl) return;
+    const startInput = getEl('recurStartDate');
+    const endInput = getEl('recurEndDate');
+    const amountInput = getEl('recurAmount');
+    const monthDayInput = getEl('recurMonthDay');
+
+    const startDate = startInput?.valueAsDate;
+    const endDate = endInput?.valueAsDate;
+    const amount = parseFloat(amountInput?.value || '0');
+    if (!startDate || !endDate || !amount) {
+        summaryEl.textContent = 'Please fill in amount and dates.';
+        return;
+    }
+    if (endDate < startDate) {
+        summaryEl.textContent = 'End date cannot be before start date.';
+        return;
+    }
+    if (recurFreq === 'weekly' && recurSelectedDays.size === 0) {
+        summaryEl.textContent = 'Select at least one weekday.';
         return;
     }
 
-    smartAddContext = { dateStr, inc, exp, note, source };
+    const noteVal = (getEl('recurNote')?.value || '').trim();
+    const monthDay = parseInt(monthDayInput?.value || '1', 10) || 1;
+    const previewTxs = generateRecurringTransactions({
+        amount,
+        note: noteVal,
+        startDate,
+        endDate,
+        type: recurType,
+        freq: recurFreq,
+        weekdays: new Set(recurSelectedDays),
+        monthDay
+    });
 
-    // Populate Preview
-    getEl('smartPreviewDate').textContent = `Starting: ${dateStr}`;
-    getEl('smartPreviewInc').textContent = inc > 0 ? `+${inc}` : '';
-    getEl('smartPreviewExp').textContent = exp > 0 ? `-${exp}` : '';
-    getEl('smartPreviewNote').textContent = note || '(No Note)';
-
-    // Reset Form
-    document.querySelectorAll('.s-chip').forEach(c => c.classList.remove('active'));
-    document.querySelector('.s-chip[data-val="monthly"]').classList.add('active');
-    getEl('smartCountInput').value = 12;
-
-    updateSmartSummary();
-    smartAddOverlay.classList.remove('hidden');
-}
-
-function updateSmartSummary() {
-    const count = parseInt(getEl('smartCountInput').value) || 0;
-    const freq = document.querySelector('.s-chip.active').dataset.val;
-    const summary = getEl('smartSummaryText');
-    
-    if (count <= 0) {
-        summary.textContent = "Please enter a valid count.";
+    if (previewTxs.length === 0) {
+        summaryEl.textContent = 'No occurrences found with current settings.';
         return;
     }
 
-    let freqText = "times";
-    if (freq === 'daily') freqText = "days";
-    if (freq === 'weekly') freqText = "weeks";
-    if (freq === 'monthly') freqText = "months";
-    if (freq === 'yearly') freqText = "years";
-
-    summary.textContent = `Generating ${count} transactions over the next ${count} ${freqText}.`;
+    summaryEl.textContent = `Will create ${previewTxs.length} transactions from ${formatDate(startDate)} to ${formatDate(endDate)}.`;
 }
 
-function executeSmartAdd() {
-    if (!smartAddContext) return;
+function generateRecurringTransactions({ amount, note = '', startDate, endDate, type = 'expense', freq = 'weekly', weekdays = new Set(), monthDay = 1 }) {
+    const txs = [];
+    if (!amount || !startDate || !endDate) return txs;
+    const start = normalizeToStartOfDay(startDate);
+    const end = normalizeToStartOfDay(endDate);
+    if (end < start) return txs;
 
-    const count = parseInt(getEl('smartCountInput').value) || 0;
-    const freq = document.querySelector('.s-chip.active').dataset.val;
-    const { dateStr, inc, exp, note, source } = smartAddContext;
+    const pushTx = (dateObj) => {
+        const iso = formatDate(dateObj);
+        txs.push({
+            id: `tx_${Date.now()}_${txs.length}`,
+            date: iso,
+            income: type === 'income' ? amount : 0,
+            expense: type === 'expense' ? amount : 0,
+            note,
+            createdAt: Date.now()
+        });
+    };
 
-    if (count <= 0) return;
+    if (freq === 'daily') {
+        for (let d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
+            pushTx(new Date(d));
+        }
+        return txs;
+    }
+
+    if (freq === 'weekly') {
+        const days = weekdays && weekdays.size > 0 ? Array.from(weekdays) : [start.getDay()];
+        const daySet = new Set(days.map(v => parseInt(v, 10)));
+        for (let d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
+            if (daySet.has(d.getDay())) {
+                pushTx(new Date(d));
+            }
+        }
+        return txs;
+    }
+
+    if (freq === 'monthly') {
+        const dayVal = Math.min(Math.max(parseInt(monthDay, 10) || 1, 1), 31);
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (cursor.getTime() <= end.getTime()) {
+            const year = cursor.getFullYear();
+            const month = cursor.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const targetDay = Math.min(dayVal, daysInMonth);
+            const candidate = new Date(year, month, targetDay);
+            if (candidate.getTime() >= start.getTime() && candidate.getTime() <= end.getTime()) {
+                pushTx(candidate);
+            }
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+        return txs;
+    }
+
+    return txs;
+}
+
+function executeRecurringAdd() {
+    const amountVal = parseFloat(getEl('recurAmount')?.value || '0');
+    const noteVal = (getEl('recurNote')?.value || '').trim();
+    const startDate = getEl('recurStartDate')?.valueAsDate;
+    const endDate = getEl('recurEndDate')?.valueAsDate;
+    const monthDay = parseInt(getEl('recurMonthDay')?.value || '1', 10) || 1;
+
+    if (!amountVal || !startDate || !endDate) {
+        alert('Missing fields!');
+        return;
+    }
+    if (endDate < startDate) {
+        alert('End date cannot be before start date.');
+        return;
+    }
+    if (recurFreq === 'weekly' && recurSelectedDays.size === 0) {
+        alert('Please select at least one weekday.');
+        return;
+    }
+
+    const newTxs = generateRecurringTransactions({
+        amount: amountVal,
+        note: noteVal,
+        startDate,
+        endDate,
+        type: recurType,
+        freq: recurFreq,
+        weekdays: new Set(recurSelectedDays),
+        monthDay
+    });
+
+    if (newTxs.length === 0) {
+        alert('No dates matched your criteria.');
+        return;
+    }
 
     const transactions = getCurrentTransactions();
-    const newTxs = [];
-    const startDate = new Date(dateStr);
+    newTxs.forEach(tx => transactions.push(tx));
+    setCurrentTransactions(transactions);
+    recurringOverlay?.classList.add('hidden');
 
-    for (let i = 0; i < count; i++) {
-        const d = new Date(startDate);
-        
-        // Calculate date based on frequency
-        if (freq === 'daily') d.setDate(startDate.getDate() + i);
-        if (freq === 'weekly') d.setDate(startDate.getDate() + (i * 7));
-        if (freq === 'monthly') d.setMonth(startDate.getMonth() + i);
-        if (freq === 'yearly') d.setFullYear(startDate.getFullYear() + i);
-
-        const isoDate = formatDate(d);
-        const newTx = { 
-            id: `tx_${Date.now()}_${i}`, 
-            date: isoDate, 
-            income: inc, 
-            expense: exp, 
-            note: note, 
-            createdAt: Date.now() 
-        };
-        
-        newTxs.push(newTx);
-        transactions.push(newTx);
-    }
-
-    setCurrentTransactions(transactions); // Saves to local storage & cloud
-
-    // Clear Inputs
-    if (source === 'footer') {
-        getEl('footerInc').value = ''; getEl('footerExp').value = ''; getEl('footerNote').value = '';
-    } else {
-        document.getElementById(`inc-${dateStr}`).value = '';
-        document.getElementById(`exp-${dateStr}`).value = '';
-        document.getElementById(`note-${dateStr}`).value = '';
-    }
-
-    // Refresh View
-    smartAddOverlay.classList.add('hidden');
     if (currentViewMode === 'timeline') {
-        resetViewAroundDate(currentNavDate, 'auto'); // Full refresh to show future items
+        resetViewAroundDate(currentNavDate, 'auto');
     } else {
         renderMainCalendarGrid();
         if (selectedCalendarDateStr) updateFooterEditor(selectedCalendarDateStr);
     }
 
-    // Show Batch Undo Toast
-    showUndoToast({ type: 'batch', txs: newTxs }, `Created ${count} transactions`);
-    smartAddContext = null;
+    showUndoToast({ type: 'batch', txs: newTxs }, `Added ${newTxs.length} recurring items`);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
