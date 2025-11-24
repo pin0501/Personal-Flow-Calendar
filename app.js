@@ -858,7 +858,7 @@ function updateTotalForecast() {
     balEl.textContent = `$${(totalInc - totalExp).toLocaleString()}`;
 }
 
-// --- User Profile & Data Management (Keeping functions as is) ---
+// --- User Profile & Data Management ---
 function openUserProfile() {
     const overlay = getEl('userProfileOverlay');
     overlay.classList.remove('hidden');
@@ -967,7 +967,6 @@ function openUserProfile() {
 }
 
 function setupAuth() {
-    // Existing auth setup code...
     const { firebaseAuth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } = window;
     const btnAuthAction = getEl('btnAuthAction'), overlay = getEl('loginOverlay');
     const iconUnauth = getEl('iconUnauth'), imgAuth = getEl('imgAuth');
@@ -1122,6 +1121,511 @@ function setupUI() {
     setupAuth();
 }
 
+// --- Utilities & Infinite Scroll ---
+function setupScrollListener() {
+    if (!timelineContainer) return;
+    setupInfiniteScroll();
+    timelineContainer.onscroll = () => {
+        handleScroll();
+        const st = timelineContainer.scrollTop;
+        const tools = document.querySelector('.nav-layer-tools');
+        if (tools && Math.abs(st - lastScrollTop) > 20) {
+            if (st > lastScrollTop && st > 50) tools.classList.remove('show-tools');
+            else if (st < lastScrollTop) tools.classList.add('show-tools');
+            lastScrollTop = st;
+        }
+        if (snapTimeout) clearTimeout(snapTimeout);
+        snapTimeout = setTimeout(() => {
+            if (isLoading || isNavigating) return;
+            const rect = timelineContainer.getBoundingClientRect();
+            const topEl = document.elementFromPoint(rect.left + 50, rect.top + 10);
+            if (topEl) {
+                const row = topEl.closest('.row-wrapper');
+                if (row) {
+                    timelineContainer.scrollTo({
+                        top: row.offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }, 150);
+    };
+}
+
+let snapTimeout = null;
+let lastScrollTop = 0;
+
+function setupInfiniteScroll() {
+    if (!timelineContainer) return;
+    const options = {
+        root: timelineContainer,
+        rootMargin: '1200px 0px',
+        threshold: 0.01
+    };
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (e.isIntersecting && !isLoading && !isInitialRender) {
+                if (e.target.id === 'bottomLoadingTrigger') {
+                    loadMoreFuture();
+                } else if (e.target.id === 'topLoadingTrigger') {
+                    loadHistory();
+                }
+            }
+        });
+    }, options);
+    if (getEl('bottomLoadingTrigger')) observer.observe(getEl('bottomLoadingTrigger'));
+    if (getEl('topLoadingTrigger')) observer.observe(getEl('topLoadingTrigger'));
+}
+
+function loadMoreFuture() {
+    isLoading = true;
+    const fragment = createDayBatch(loadedEndDate, BATCH_SIZE);
+    planningList.appendChild(fragment);
+    loadedEndDate.setDate(loadedEndDate.getDate() + BATCH_SIZE);
+    setTimeout(() => { isLoading = false; }, 100);
+}
+
+function loadHistory() {
+    if (loadedStartDate <= PROJECT_START_DATE) return;
+    isLoading = true;
+    const oldH = timelineContainer.scrollHeight;
+    const oldT = timelineContainer.scrollTop;
+    const newStart = new Date(loadedStartDate);
+    newStart.setDate(loadedStartDate.getDate() - BATCH_SIZE);
+    if (newStart < PROJECT_START_DATE) newStart.setTime(PROJECT_START_DATE.getTime());
+    const count = Math.ceil((loadedStartDate - newStart) / (1000 * 60 * 60 * 24));
+    if (count <= 0) {
+        isLoading = false;
+        return;
+    }
+    const fragment = createDayBatch(newStart, count);
+    planningList.insertBefore(fragment, planningList.firstChild);
+    loadedStartDate = newStart;
+    timelineContainer.scrollTop = oldT + (timelineContainer.scrollHeight - oldH);
+    setTimeout(() => {
+        isLoading = false;
+    }, 50);
+}
+
+function handleScroll() {
+    if (!timelineContainer || currentViewMode === 'calendar' || isNavigating) return;
+    const rect = timelineContainer.getBoundingClientRect();
+    const topEl = document.elementFromPoint(rect.left + 50, rect.top + 100);
+    if (topEl?.closest('.row-wrapper')) {
+        const d = new Date(topEl.closest('.row-wrapper').dataset.date);
+        if (!isNaN(d.getTime()) && d.getMonth() !== currentNavDate.getMonth()) {
+            updateNavDisplay(d);
+        }
+    }
+    if (summaryMode === 'current') updateTotalForecast();
+}
+
+function getVisibleBottomDate() {
+    const rows = Array.from(document.querySelectorAll('.row-wrapper'));
+    if (!timelineContainer) return null;
+    const rect = timelineContainer.getBoundingClientRect();
+    const targetY = rect.bottom - 5;
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const rRect = rows[i].getBoundingClientRect();
+        if (rRect.top < targetY) return rows[i].dataset.date;
+    }
+    return null;
+}
+
+function renderFilterList() {
+    const c = getEl('filterListContainer');
+    if (!c) return;
+    c.innerHTML = '';
+    let t = getCurrentTransactions();
+    if (filterType !== 'all') {
+        t = t.filter(x => {
+            if (filterType === 'income') return (x.income || 0) > 0;
+            if (filterType === 'expense') return (x.expense || 0) > 0;
+            if (filterType === 'note') return x.note && x.note.trim().length > 0;
+            return true;
+        });
+    }
+    if (filterSearchText) {
+        const lower = filterSearchText.toLowerCase();
+        t = t.filter(x => {
+            const noteMatch = (x.note || '').toLowerCase().includes(lower);
+            const incMatch = (x.income || 0).toString().includes(lower);
+            const expMatch = (x.expense || 0).toString().includes(lower);
+            return noteMatch || incMatch || expMatch;
+        });
+    }
+    t.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const groups = {};
+    t.forEach(tx => {
+        if (!groups[tx.date]) groups[tx.date] = [];
+        groups[tx.date].push(tx);
+    });
+    let curYear = null;
+    Object.keys(groups).sort((a, b) => new Date(a) - new Date(b)).forEach(dateStr => {
+        const year = new Date(dateStr).getFullYear();
+        if (year !== curYear) {
+            curYear = year;
+            const h = document.createElement('div');
+            h.className = 'year-header';
+            h.textContent = year;
+            c.appendChild(h);
+        }
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'filter-group';
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'filter-group-header';
+        dateHeader.textContent = dateStr.slice(5);
+        groupDiv.appendChild(dateHeader);
+        groups[dateStr].forEach(i => {
+            const row = document.createElement('div');
+            row.className = 'filter-item-row';
+            const incStr = i.income > 0 ? '+$' + formatCompactNumber(i.income) : '';
+            const expStr = i.expense > 0 ? '-$' + formatCompactNumber(i.expense) : '';
+            row.innerHTML = `
+                <div class="f-amt income">${incStr}</div>
+                <div class="f-amt expense">${expStr}</div>
+                <div class="f-note filter-note-col">${i.note || ''}</div>
+                <div class="btn-jump-date" title="Jump to Edit">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </div>
+            `;
+            row.querySelector('.btn-jump-date').onclick = (e) => {
+                e.stopPropagation();
+                jumpToDateContext(dateStr);
+            };
+            groupDiv.appendChild(row);
+        });
+        c.appendChild(groupDiv);
+    });
+}
+
+function jumpToDateContext(dateStr) {
+    const overlay = document.getElementById('filterOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    const targetDate = new Date(dateStr);
+    if (currentViewMode === 'timeline') {
+        isNavigating = true;
+        resetViewAroundDate(targetDate, 'auto');
+        setTimeout(() => {
+            const rowWrapper = document.querySelector(`.row-wrapper[data-date="${dateStr}"]`);
+            if (rowWrapper) {
+                const top = rowWrapper.offsetTop - 10;
+                timelineContainer.scrollTo({ top: top, behavior: 'smooth' });
+                if (!rowWrapper.classList.contains('expanded')) {
+                    rowWrapper.classList.add('expanded');
+                    renderInlineDetails(rowWrapper, dateStr);
+                }
+                rowWrapper.style.transition = 'background 0.5s';
+                rowWrapper.style.backgroundColor = '#fffbeb';
+                setTimeout(() => {
+                    rowWrapper.style.backgroundColor = '';
+                }, 1000);
+            }
+            isNavigating = false;
+        }, 150);
+    } else {
+        currentNavDate = targetDate;
+        updateNavDisplay(targetDate);
+        renderMainCalendarGrid();
+        selectedCalendarDateStr = dateStr;
+        const cell = document.querySelector(`.main-cal-cell[data-date="${dateStr}"]`);
+        if (cell) {
+            document.querySelectorAll('.main-cal-cell').forEach(c => c.classList.remove('selected'));
+            cell.classList.add('selected');
+        }
+        openFooterEditor(dateStr);
+    }
+}
+
+function openDateRangePicker() {
+    dateRangeOverlay.classList.remove('hidden');
+    tempStart = new Date(pickerStartDate);
+    if (pickerEndDate.getTime() !== pickerStartDate.getTime()) {
+        tempEnd = new Date(pickerEndDate);
+    } else {
+        tempEnd = null;
+    }
+    pickerHasInteracted = false;
+    pickerBaseDate = new Date(pickerStartDate);
+    pickerBaseDate.setDate(1);
+    renderDatePicker();
+}
+
+function renderDatePicker() {
+    const panes = [getEl('calLeft'), getEl('calRight')];
+    [0, 1].forEach(offset => {
+        const d = new Date(pickerBaseDate); d.setMonth(d.getMonth() + offset);
+        const m = d.getMonth(), y = d.getFullYear();
+        let html = `<div class="cal-head">${formatMonth(d)}</div><div class="cal-grid">`;
+        const firstDay = new Date(y, m, 1).getDay();
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+        for (let i = 1; i <= daysInMonth; i++) {
+            const cd = new Date(y, m, i);
+            const t = cd.getTime();
+            let cls = 'cal-day';
+            if (t === new Date().setHours(0, 0, 0, 0)) cls += ' today';
+            const sTime = tempStart ? tempStart.getTime() : 0;
+            const eTime = tempEnd ? tempEnd.getTime() : 0;
+            if (tempStart && t === sTime) cls += ' range-start';
+            if (tempEnd && t === eTime) cls += ' range-end';
+            if (tempStart && tempEnd && t > sTime && t < eTime) cls += ' in-range';
+            html += `<div class="${cls}" data-ts="${t}">${i}</div>`;
+        }
+        html += '</div>';
+        panes[offset].innerHTML = html;
+        panes[offset].querySelectorAll('.cal-day:not(.empty)').forEach(el => {
+            el.onclick = () => {
+                const ts = parseInt(el.dataset.ts);
+                const clickDate = new Date(ts);
+                if (!pickerHasInteracted) {
+                    tempStart = clickDate;
+                    tempEnd = null;
+                    pickerHasInteracted = true;
+                    renderDatePicker();
+                    return;
+                }
+                const sTime = tempStart ? tempStart.getTime() : 0;
+                const eTime = tempEnd ? tempEnd.getTime() : 0;
+                if (tempStart && ts === sTime) {
+                    if (tempEnd) {
+                        tempStart = tempEnd;
+                        tempEnd = null;
+                    } else {
+                        tempStart = null;
+                    }
+                } else if (tempEnd && ts === eTime) {
+                    tempEnd = null;
+                } else {
+                    if (!tempStart) {
+                        tempStart = clickDate;
+                    } else if (tempEnd) {
+                        tempStart = clickDate;
+                        tempEnd = null;
+                    } else {
+                        if (clickDate < tempStart) {
+                            tempEnd = tempStart;
+                            tempStart = clickDate;
+                        } else {
+                            tempEnd = clickDate;
+                        }
+                    }
+                }
+                renderDatePicker();
+            };
+        });
+    });
+    getEl('pickerMonthsLabel').textContent = formatMonth(pickerBaseDate);
+    const sText = tempStart ? formatDate(tempStart) : 'Select start...';
+    const eText = tempEnd ? formatDate(tempEnd) : (tempStart ? 'Select end (or Apply)' : '...');
+    const html = `
+        <div class="picker-range-display">
+            <span class="p-date">${sText}</span>
+            <span class="picker-arrow">→</span>
+            <span class="p-date">${eText}</span>
+        </div>
+    `;
+    getEl('selectedRangeText').innerHTML = html;
+}
+
+function jumpMonth(delta) {
+    const targetDate = new Date(currentNavDate);
+    targetDate.setMonth(targetDate.getMonth() + delta);
+    targetDate.setDate(1);
+    if (currentViewMode === 'calendar') {
+        currentNavDate = targetDate;
+        updateNavDisplay(targetDate);
+        renderMainCalendarGrid();
+        selectedCalendarDateStr = null; 
+        document.querySelectorAll('.main-cal-cell').forEach(c => c.classList.remove('selected'));
+        closeFooterEditor();
+        return;
+    }
+    const safetyMargin = 7 * 24 * 60 * 60 * 1000;
+    if (targetDate.getTime() > (loadedStartDate.getTime() + safetyMargin) &&
+        targetDate.getTime() < (loadedEndDate.getTime() - safetyMargin)) {
+        updateNavDisplay(targetDate);
+        isNavigating = true; 
+        scrollToDate(targetDate, 'smooth');
+        setTimeout(() => { isNavigating = false; }, 500);
+    } else {
+        resetViewAroundDate(targetDate, 'auto');
+    }
+}
+
+function updateNavDisplay(d) { const el = getEl('currentMonthDisplay'); if (el) { el.textContent = `${d.getFullYear()} / ${d.getMonth() + 1}`; currentNavDate = d; } }
+function scrollToDate(d, behavior = 'smooth') {
+    const s = formatDate(d);
+    const r = document.querySelector(`.row-wrapper[data-date="${s}"]`);
+    if (r && timelineContainer) {
+        const top = r.offsetTop - 10;
+        timelineContainer.scrollTo({ top: top, behavior: behavior });
+    }
+}
+function formatDate(d) { const m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0'); return `${d.getFullYear()}-${m}-${day}`; }
+function getWeekday(d) { return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]; }
+function normalizeToStartOfDay(d) { const n = new Date(d); n.setHours(0, 0, 0, 0); return n; }
+function normalizeToEndOfDay(d) { const n = new Date(d); n.setHours(23, 59, 59, 999); return n; }
+function formatMonth(d) { return `${d.getFullYear()} / ${String(d.getMonth() + 1).padStart(2, '0')}`; }
+
+function enableFlowNameEdit() {
+    const nameSpan = getEl('currentFlowName');
+    const nameInput = getEl('flowNameInput');
+    const arrow = getEl('flowDropdownArrow');
+    const saveBtn = getEl('btnFlowSave');
+    if (!nameSpan || !nameInput) return;
+    nameSpan.classList.remove('hidden');
+    nameInput.classList.add('hidden');
+    saveBtn?.classList.add('hidden');
+    arrow?.classList.remove('hidden');
+    nameSpan.onclick = (e) => {
+        e.stopPropagation();
+        startEditingFlowName();
+    };
+    if (arrow) {
+        const toggleDropdown = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const dropdown = getEl('flowDropdown');
+            if (dropdown) {
+                const isHidden = dropdown.classList.contains('hidden');
+                if (isHidden) dropdown.classList.remove('hidden');
+                else dropdown.classList.add('hidden');
+            }
+        };
+        arrow.onclick = toggleDropdown;
+        arrow.ontouchend = toggleDropdown;
+    }
+}
+
+function startEditingFlowName() {
+    const nameSpan = getEl('currentFlowName');
+    const nameInput = getEl('flowNameInput');
+    const arrow = getEl('flowDropdownArrow');
+    const saveBtn = getEl('btnFlowSave');
+    getEl('flowDropdown')?.classList.add('hidden');
+    arrow?.classList.add('hidden');
+    nameSpan.classList.add('hidden');
+    nameInput.classList.remove('hidden');
+    saveBtn?.classList.remove('hidden');
+    nameInput.value = appData.flows[appData.currentFlowId].name;
+    nameInput.focus();
+    const saveAndExit = () => {
+        const v = nameInput.value.trim();
+        if (v) {
+            appData.flows[appData.currentFlowId].name = v;
+            saveData();
+            nameSpan.textContent = v;
+        }
+        nameInput.classList.add('hidden');
+        saveBtn?.classList.add('hidden');
+        nameSpan.classList.remove('hidden');
+        arrow?.classList.remove('hidden');
+    };
+    nameInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            nameInput.blur();
+        }
+    };
+    nameInput.onblur = () => {
+        setTimeout(saveAndExit, 200);
+    };
+    if (saveBtn) {
+        saveBtn.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const v = nameInput.value.trim();
+            if (v) {
+                appData.flows[appData.currentFlowId].name = v;
+                saveData();
+                nameSpan.textContent = v;
+            }
+            nameInput.classList.add('hidden');
+            saveBtn.classList.add('hidden');
+            nameSpan.classList.remove('hidden');
+            arrow?.classList.remove('hidden');
+        };
+        saveBtn.ontouchend = saveBtn.onclick;
+    }
+    nameInput.onclick = (e) => e.stopPropagation();
+}
+
+// --- [New Feature] Date Navigation Dropdown Logic ---
+let dropdownYearState = new Date().getFullYear();
+
+function setupNavDropdown() {
+    const displayEl = getEl('currentMonthDisplay');
+    const dropdown = getEl('navDateDropdown');
+    if (displayEl) {
+        displayEl.onclick = (e) => {
+            e.stopPropagation(); 
+            const isHidden = dropdown.classList.contains('hidden');
+            if (isHidden) {
+                dropdownYearState = currentNavDate.getFullYear();
+                renderNavDropdown();
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        };
+    }
+    getEl('ddBtnPrevYear').onclick = (e) => { e.stopPropagation(); dropdownYearState--; renderNavDropdown(); };
+    getEl('ddBtnNextYear').onclick = (e) => { e.stopPropagation(); dropdownYearState++; renderNavDropdown(); };
+    document.querySelectorAll('.dd-month-item').forEach(item => {
+        item.onclick = (e) => {
+            e.stopPropagation();
+            const selectedMonth = parseInt(item.dataset.m);
+            const newDate = new Date(dropdownYearState, selectedMonth, 1);
+            if (currentViewMode === 'timeline') {
+                isNavigating = true;
+                resetViewAroundDate(newDate, 'auto');
+            } else {
+                currentNavDate = newDate;
+                renderMainCalendarGrid();
+                updateNavDisplay(newDate);
+            }
+            dropdown.classList.add('hidden');
+        };
+    });
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && e.target !== displayEl) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+function renderNavDropdown() {
+    getEl('ddYearDisplay').textContent = dropdownYearState;
+    const currentNavYear = currentNavDate.getFullYear();
+    const currentNavMonth = currentNavDate.getMonth();
+    document.querySelectorAll('.dd-month-item').forEach(item => {
+        const m = parseInt(item.dataset.m);
+        if (dropdownYearState === currentNavYear && m === currentNavMonth) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+function updateScrollbarWidth() {
+    const outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll';
+    outer.style.msOverflowStyle = 'scrollbar';
+    document.body.appendChild(outer);
+    const inner = document.createElement('div');
+    outer.appendChild(inner);
+    const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+    outer.parentNode.removeChild(outer);
+    document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
+}
+
 // --- [New Feature] Smart Add Logic ---
 function prepareSmartAdd(dateStr, source) {
     let inc, exp, note;
@@ -1235,87 +1739,6 @@ function executeSmartAdd() {
     // Show Batch Undo Toast
     showUndoToast({ type: 'batch', txs: newTxs }, `Created ${count} transactions`);
     smartAddContext = null;
-}
-
-// ... (Rest of the existing helper functions: handleScroll, getVisibleBottomDate, etc.) ...
-// They are included in the file but truncated here for brevity in thought process, 
-// but in the final output below I will provide the COMPLETE app.js content.
-
-// --- Utilities & Infinite Scroll ---
-// (Included in the final output block)
-// ...
-// ...
-// ...
-
-// --- [New Feature] Date Navigation Dropdown Logic ---
-// ... (Existing code) ...
-
-function setupNavDropdown() {
-    const displayEl = getEl('currentMonthDisplay');
-    const dropdown = getEl('navDateDropdown');
-    if (displayEl) {
-        displayEl.onclick = (e) => {
-            e.stopPropagation(); 
-            const isHidden = dropdown.classList.contains('hidden');
-            if (isHidden) {
-                dropdownYearState = currentNavDate.getFullYear();
-                renderNavDropdown();
-                dropdown.classList.remove('hidden');
-            } else {
-                dropdown.classList.add('hidden');
-            }
-        };
-    }
-    getEl('ddBtnPrevYear').onclick = (e) => { e.stopPropagation(); dropdownYearState--; renderNavDropdown(); };
-    getEl('ddBtnNextYear').onclick = (e) => { e.stopPropagation(); dropdownYearState++; renderNavDropdown(); };
-    document.querySelectorAll('.dd-month-item').forEach(item => {
-        item.onclick = (e) => {
-            e.stopPropagation();
-            const selectedMonth = parseInt(item.dataset.m);
-            const newDate = new Date(dropdownYearState, selectedMonth, 1);
-            if (currentViewMode === 'timeline') {
-                isNavigating = true;
-                resetViewAroundDate(newDate, 'auto');
-            } else {
-                currentNavDate = newDate;
-                renderMainCalendarGrid();
-                updateNavDisplay(newDate);
-            }
-            dropdown.classList.add('hidden');
-        };
-    });
-    document.addEventListener('click', (e) => {
-        if (!dropdown.contains(e.target) && e.target !== displayEl) {
-            dropdown.classList.add('hidden');
-        }
-    });
-}
-
-function renderNavDropdown() {
-    getEl('ddYearDisplay').textContent = dropdownYearState;
-    const currentNavYear = currentNavDate.getFullYear();
-    const currentNavMonth = currentNavDate.getMonth();
-    document.querySelectorAll('.dd-month-item').forEach(item => {
-        const m = parseInt(item.dataset.m);
-        if (dropdownYearState === currentNavYear && m === currentNavMonth) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-}
-
-function updateScrollbarWidth() {
-    const outer = document.createElement('div');
-    outer.style.visibility = 'hidden';
-    outer.style.overflow = 'scroll';
-    outer.style.msOverflowStyle = 'scrollbar';
-    document.body.appendChild(outer);
-    const inner = document.createElement('div');
-    outer.appendChild(inner);
-    const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
-    outer.parentNode.removeChild(outer);
-    document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
