@@ -21,6 +21,7 @@ let currentNavDate = new Date();
 let isNavigating = false;
 let isLoading = false;
 let isInitialRender = true;
+let isFlowEditMode = false;
 
 let undoFadeTimeout = null;
 
@@ -342,54 +343,168 @@ function updateFlowUI() {
     renderFlowDropdown();
 }
 
+// [Update Function] renderFlowDropdown
 function renderFlowDropdown() {
     const list = getEl('flowListContainer');
+    const dropdown = getEl('flowDropdown');
+    const toggleBtn = getEl('btnToggleEditFlow');
+    
     if (!list) return;
     list.innerHTML = '';
+    
+    // Toggle class on container for CSS styling
+    if (isFlowEditMode) {
+        dropdown.classList.add('edit-mode');
+        toggleBtn?.classList.add('active');
+    } else {
+        dropdown.classList.remove('edit-mode');
+        toggleBtn?.classList.remove('active');
+    }
+
     const flowIds = Object.keys(appData.flows);
     const canDelete = flowIds.length > 1;
+
     flowIds.forEach(flowId => {
         const flow = appData.flows[flowId];
         if (!flow) return;
+
         const item = document.createElement('div');
         item.className = 'flow-item';
+        item.dataset.id = flowId;
         if (flowId === appData.currentFlowId) item.classList.add('active');
+
+        // 1. Drag Handle (Visible in Edit Mode via CSS)
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.innerHTML = '☰';
+
+        // 2. Name
         const nameSpan = document.createElement('span');
         nameSpan.className = 'flow-item-name';
         nameSpan.textContent = flow.name;
+
+        // 3. Delete Button (Visible in Edit Mode via CSS)
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'btn-delete-flow';
-        deleteBtn.title = 'Delete Flow';
         deleteBtn.textContent = '✕';
-        if (!canDelete) {
-            deleteBtn.disabled = true;
-        }
+
+        item.appendChild(handle);
         item.appendChild(nameSpan);
         item.appendChild(deleteBtn);
-        item.onclick = (e) => {
-            if (e.target === deleteBtn) return;
-            appData.currentFlowId = flowId;
-            saveData();
-            getEl('flowDropdown')?.classList.add('hidden');
-            updateFlowUI();
-            resetViewAroundDate(currentNavDate, 'auto');
-        };
-        if (canDelete) {
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                flowToDeleteId = flowId;
-                const overlay = getEl('flowDeleteOverlay');
-                const msg = getEl('deleteFlowMsg');
-                if (overlay && msg) {
-                    msg.innerHTML = `Delete flow "<b>${flow.name}</b>"?<br><span style="font-size:0.8rem; color:#666;">All transactions in this flow will be lost.</span>`;
-                    overlay.classList.remove('hidden');
-                    getEl('flowDropdown')?.classList.add('hidden');
+
+        // Events
+        if (isFlowEditMode) {
+            // Drag & Drop Logic
+            item.draggable = true;
+            item.classList.add('draggable');
+            
+            item.ondragstart = (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', flowId);
+                item.classList.add('dragging');
+            };
+
+            item.ondragend = () => {
+                item.classList.remove('dragging');
+                document.querySelectorAll('.flow-item').forEach(i => i.classList.remove('drag-over'));
+            };
+
+            item.ondragover = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                item.classList.add('drag-over');
+            };
+
+            item.ondragleave = () => {
+                item.classList.remove('drag-over');
+            };
+
+            item.ondrop = (e) => {
+                e.preventDefault();
+                const sourceId = e.dataTransfer.getData('text/plain');
+                const targetId = flowId;
+                if (sourceId !== targetId) {
+                    reorderFlows(sourceId, targetId);
                 }
             };
+
+            // In Edit Mode, clicking delete removes flow
+            if (canDelete) {
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    confirmDeleteFlow(flowId);
+                };
+            } else {
+                deleteBtn.style.display = 'none'; // Cannot delete last flow
+            }
+
+            // In Edit Mode, clicking row does nothing (or could focus rename if implemented)
+            item.onclick = (e) => e.stopPropagation();
+
+        } else {
+            // Normal Mode: Click to switch flow
+            item.onclick = () => {
+                appData.currentFlowId = flowId;
+                saveData();
+                closeFlowDropdown();
+                updateFlowUI();
+                resetViewAroundDate(currentNavDate, 'auto');
+            };
         }
+
         list.appendChild(item);
     });
+}
+
+// [New Helper] Reorder Flows
+function reorderFlows(sourceId, targetId) {
+    const keys = Object.keys(appData.flows);
+    const sourceIndex = keys.indexOf(sourceId);
+    const targetIndex = keys.indexOf(targetId);
+    
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    // Move key in array
+    keys.splice(sourceIndex, 1);
+    keys.splice(targetIndex, 0, sourceId);
+
+    // Reconstruct object to preserve order
+    const newFlows = {};
+    keys.forEach(key => {
+        newFlows[key] = appData.flows[key];
+    });
+
+    appData.flows = newFlows;
+    saveData();
+    renderFlowDropdown(); // Re-render list
+}
+
+// [New Helper] Close Dropdown & Reset State
+function closeFlowDropdown() {
+    const dropdown = getEl('flowDropdown');
+    const arrow = getEl('flowDropdownArrow');
+    
+    dropdown?.classList.add('hidden');
+    arrow?.classList.remove('rotated'); // Reset arrow
+    
+    // Reset Edit Mode when closed
+    isFlowEditMode = false;
+    renderFlowDropdown(); 
+}
+
+// [New Helper] Confirm Delete (Extracted)
+function confirmDeleteFlow(flowId) {
+    flowToDeleteId = flowId;
+    const flow = appData.flows[flowId];
+    const overlay = getEl('flowDeleteOverlay');
+    const msg = getEl('deleteFlowMsg');
+    
+    if (overlay && msg) {
+        msg.innerHTML = `Delete flow "<b>${flow.name}</b>"?<br><span style="font-size:0.8rem; color:#666;">All transactions in this flow will be lost.</span>`;
+        overlay.classList.remove('hidden');
+        closeFlowDropdown();
+    }
 }
 
 // --- Rendering System (Dual View) ---
@@ -805,11 +920,32 @@ function showUndoToast(dataObj, messageText = 'Transaction deleted') {
 
 function performUndo() {
     if (!undoData) return;
+    
     if (undoData.type === 'flow') {
-        const { id, data } = undoData;
+        const { id, data, index } = undoData;
         if (id && data) {
-            appData.flows[id] = data;
-            appData.currentFlowId = id;
+            // [Logic Fix] Restore flow at original index
+            const currentKeys = Object.keys(appData.flows);
+            
+            // Insert key back at the specific index
+            if (typeof index === 'number' && index >= 0 && index <= currentKeys.length) {
+                currentKeys.splice(index, 0, id);
+            } else {
+                currentKeys.push(id); // Fallback to end
+            }
+
+            // Reconstruct object in order
+            const newFlows = {};
+            currentKeys.forEach(key => {
+                if (key === id) {
+                    newFlows[key] = data;
+                } else {
+                    newFlows[key] = appData.flows[key];
+                }
+            });
+
+            appData.flows = newFlows;
+            appData.currentFlowId = id; // Switch back to restored flow
             saveData();
             updateFlowUI();
             resetViewAroundDate(currentNavDate, 'auto');
@@ -1106,7 +1242,13 @@ function setupUI() {
             if (flowToDeleteId && appData.flows[flowToDeleteId]) {
                 const targetId = flowToDeleteId;
                 const targetFlow = appData.flows[targetId];
+                
+                // [Logic Fix] Capture current index before deleting
+                const flowKeys = Object.keys(appData.flows);
+                const flowIndex = flowKeys.indexOf(targetId);
+
                 delete appData.flows[targetId];
+
                 if (appData.currentFlowId === targetId) {
                     const firstId = Object.keys(appData.flows)[0];
                     if (firstId) appData.currentFlowId = firstId;
@@ -1114,7 +1256,9 @@ function setupUI() {
                 saveData();
                 updateFlowUI();
                 resetViewAroundDate(currentNavDate, 'auto');
-                showUndoToast({ type: 'flow', id: targetId, data: targetFlow }, 'Flow deleted');
+                
+                // Pass index to Undo Toast
+                showUndoToast({ type: 'flow', id: targetId, data: targetFlow, index: flowIndex }, 'Flow deleted');
             }
             delOverlay?.classList.add('hidden');
             flowToDeleteId = null;
@@ -1149,8 +1293,42 @@ function setupUI() {
             renderFilterList();
         };
     });
-    document.body.onclick = () => getEl('flowDropdown')?.classList.add('hidden');
-    const btnAdd = getEl('btnAddFlow'); if (btnAdd) btnAdd.onclick = () => { const id = 'f_' + Date.now(); appData.flows[id] = { name: 'Untitled Flow', transactions: [] }; appData.currentFlowId = id; saveData(); updateFlowUI(); resetViewAroundDate(new Date(), 'auto'); getEl('flowDropdown')?.classList.add('hidden'); startEditingFlowName(); };
+
+    document.body.onclick = (e) => {
+        // Only close if clicking outside dropdown and not on the arrow
+        const dropdown = getEl('flowDropdown');
+        const arrow = getEl('flowDropdownArrow');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            if (!dropdown.contains(e.target) && e.target !== arrow && !arrow.contains(e.target)) {
+                closeFlowDropdown();
+            }
+        }
+    };
+
+    const btnAdd = getEl('btnAddFlow'); 
+    if (btnAdd) btnAdd.onclick = () => { 
+        // ... (原本新增 Flow 的邏輯) ...
+        const id = 'f_' + Date.now(); 
+        appData.flows[id] = { name: 'Untitled Flow', transactions: [] }; 
+        appData.currentFlowId = id; 
+        saveData(); 
+        updateFlowUI(); 
+        resetViewAroundDate(new Date(), 'auto'); 
+        getEl('flowDropdown')?.classList.add('hidden'); 
+        startEditingFlowName(); 
+    };
+
+    // ============================================================
+    // ★★★ 請將這段「鉛筆按鈕」綁定程式碼貼在這裡 (btnAddFlow 之後) ★★★
+    // ============================================================
+    const btnEditFlow = getEl('btnToggleEditFlow');
+    if (btnEditFlow) {
+        btnEditFlow.onclick = (e) => {
+            e.stopPropagation();
+            isFlowEditMode = !isFlowEditMode; // 切換編輯模式狀態
+            renderFlowDropdown();             // 重新渲染清單
+        };
+    }
     
     // Recurring UI Bindings
     const btnOpenRecurringFooter = getEl('btnOpenRecurringFooter');
@@ -1581,33 +1759,49 @@ function normalizeToStartOfDay(d) { const n = new Date(d); n.setHours(0, 0, 0, 0
 function normalizeToEndOfDay(d) { const n = new Date(d); n.setHours(23, 59, 59, 999); return n; }
 function formatMonth(d) { return `${d.getFullYear()} / ${String(d.getMonth() + 1).padStart(2, '0')}`; }
 
+// [Update Function] enableFlowNameEdit (Modify the Arrow Click Logic)
 function enableFlowNameEdit() {
     const nameSpan = getEl('currentFlowName');
     const nameInput = getEl('flowNameInput');
     const arrow = getEl('flowDropdownArrow');
     const saveBtn = getEl('btnFlowSave');
+    
     if (!nameSpan || !nameInput) return;
+
+    // ... (Keep existing UI state logic: show nameSpan, hide input) ...
     nameSpan.classList.remove('hidden');
     nameInput.classList.add('hidden');
     saveBtn?.classList.add('hidden');
     arrow?.classList.remove('hidden');
+
     nameSpan.onclick = (e) => {
         e.stopPropagation();
         startEditingFlowName();
     };
+
     if (arrow) {
-        const toggleDropdown = (e) => {
+        // Unbind previous event first to avoid duplicates if called multiple times
+        arrow.onclick = null; 
+        arrow.onclick = (e) => {
             e.stopPropagation();
             e.preventDefault();
             const dropdown = getEl('flowDropdown');
             if (dropdown) {
                 const isHidden = dropdown.classList.contains('hidden');
-                if (isHidden) dropdown.classList.remove('hidden');
-                else dropdown.classList.add('hidden');
+                if (isHidden) {
+                    // Open
+                    dropdown.classList.remove('hidden');
+                    arrow.classList.add('rotated');
+                    isFlowEditMode = false; // Always start in normal mode
+                    renderFlowDropdown();
+                } else {
+                    // Close
+                    closeFlowDropdown();
+                }
             }
         };
-        arrow.onclick = toggleDropdown;
-        arrow.ontouchend = toggleDropdown;
+        // Also handle touch for better mobile response
+        arrow.ontouchend = arrow.onclick;
     }
 }
 
