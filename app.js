@@ -41,6 +41,7 @@ let pickerHasInteracted = false;
 let recurType = 'expense';
 let recurFreq = 'weekly';
 let recurSelectedDays = new Set(); // Weekly selection (0-6)
+let isRecurFormInitialized = false;
 
 // Filter State
 let filterSearchText = '';
@@ -164,21 +165,80 @@ async function loadCloudData(uid) {
     }
 }
 
+/**
+ * Robust Deep Comparison for Flows
+ * Fixes: Handles edge cases where local/cloud data might differ in null/undefined/0 representation.
+ */
 function areFlowsEqual(localFlows, cloudFlows) {
     localFlows = localFlows || {};
     cloudFlows = cloudFlows || {};
-    const localKeys = Object.keys(localFlows);
-    const cloudKeys = Object.keys(cloudFlows);
+    const localKeys = Object.keys(localFlows).sort();
+    const cloudKeys = Object.keys(cloudFlows).sort();
+
+    // 1. Key count check
     if (localKeys.length !== cloudKeys.length) return false;
+
+    // 2. Key identity check
+    for (let i = 0; i < localKeys.length; i++) {
+        if (localKeys[i] !== cloudKeys[i]) return false;
+    }
+
+    // 3. Content check per flow
     for (const key of localKeys) {
         const lFlow = localFlows[key];
         const cFlow = cloudFlows[key];
-        if (!cFlow) return false;
-        if (lFlow.name !== cFlow.name) return false;
-        const lTxsStr = JSON.stringify(lFlow.transactions || []);
-        const cTxsStr = JSON.stringify(cFlow.transactions || []);
-        if (lTxsStr !== cTxsStr) return false;
+
+        // Basic metadata check
+        if (!lFlow || !cFlow) return false;
+        if ((lFlow.name || '').trim() !== (cFlow.name || '').trim()) return false;
+
+        // Transaction comparison
+        if (!areTransactionsEqual(lFlow.transactions, cFlow.transactions)) {
+            return false;
+        }
     }
+
+    return true;
+}
+
+/**
+ * Helper: Compare two transaction arrays by value with type coercion.
+ * Fixes: Floating point errors and "0" vs 0 vs null discrepancies.
+ */
+function areTransactionsEqual(listA, listB) {
+    const a = listA || [];
+    const b = listB || [];
+
+    if (a.length !== b.length) return false;
+
+    // Sort by ID to ensure array order doesn't affect comparison
+    const sortedA = [...a].sort((x, y) => (x.id || '').localeCompare(y.id || ''));
+    const sortedB = [...b].sort((x, y) => (x.id || '').localeCompare(y.id || ''));
+
+    for (let i = 0; i < sortedA.length; i++) {
+        const txA = sortedA[i];
+        const txB = sortedB[i];
+
+        // 1. ID & Date Check
+        if (txA.id !== txB.id) return false;
+        if (txA.date !== txB.date) return false;
+
+        // 2. Numeric Check (Robust handling for 0, null, undefined, strings)
+        // Uses a small epsilon (0.001) to ignore floating point storage differences
+        const incA = parseFloat(txA.income) || 0;
+        const incB = parseFloat(txB.income) || 0;
+        if (Math.abs(incA - incB) > 0.001) return false;
+
+        const expA = parseFloat(txA.expense) || 0;
+        const expB = parseFloat(txB.expense) || 0;
+        if (Math.abs(expA - expB) > 0.001) return false;
+
+        // 3. Note Check (Robust handling for null vs empty string)
+        const noteA = (txA.note || '').trim();
+        const noteB = (txB.note || '').trim();
+        if (noteA !== noteB) return false;
+    }
+
     return true;
 }
 
@@ -666,18 +726,14 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
         note = document.getElementById(`note-${dateStr}`).value.trim();
     }
     if (!inc && !exp && !note) return;
-    const newTx = { id: `tx_${Date.now()}`, date: dateStr, income: inc, expense: exp, note: note, createdAt: Date.now() };
+    const newTx = { id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`, date: dateStr, income: inc, expense: exp, note: note, createdAt: Date.now() };
     const transactions = getCurrentTransactions();
     transactions.push(newTx);
     setCurrentTransactions(transactions);
     if (source === 'footer') {
         getEl('footerInc').value = ''; getEl('footerExp').value = ''; getEl('footerNote').value = '';
         updateFooterEditor(dateStr);
-        if (typeof refreshCalendarCell === 'function') {
-            refreshCalendarCell(dateStr);
-        } else {
-            renderMainCalendarGrid();
-        }
+        refreshCalendarCell(dateStr);
     } else {
         document.getElementById(`inc-${dateStr}`).value = '';
         document.getElementById(`exp-${dateStr}`).value = '';
@@ -1091,17 +1147,24 @@ function setupUI() {
     const btnAdd = getEl('btnAddFlow'); if (btnAdd) btnAdd.onclick = () => { const id = 'f_' + Date.now(); appData.flows[id] = { name: 'Untitled Flow', transactions: [] }; appData.currentFlowId = id; saveData(); updateFlowUI(); resetViewAroundDate(new Date(), 'auto'); getEl('flowDropdown')?.classList.add('hidden'); startEditingFlowName(); };
     
     // Recurring UI Bindings
-    const btnOpenRecurring = getEl('btnOpenRecurringOverlay');
-    if (btnOpenRecurring) {
-        btnOpenRecurring.onclick = () => {
-            getEl('flowDropdown')?.classList.add('hidden');
-            prepareRecurringOverlay();
+    const btnOpenRecurringFooter = getEl('btnOpenRecurringFooter');
+    if (btnOpenRecurringFooter) {
+        btnOpenRecurringFooter.onclick = () => {
+            getEl('filterOverlay')?.classList.add('hidden');
+            openRecurringOverlay();
         };
     }
 
     const btnRecurClose = getEl('btnRecurClose');
     if (btnRecurClose) {
         btnRecurClose.onclick = () => recurringOverlay?.classList.add('hidden');
+    }
+    if (recurringOverlay) {
+        recurringOverlay.onclick = (e) => {
+            if (e.target === recurringOverlay) {
+                recurringOverlay.classList.add('hidden');
+            }
+        };
     }
 
     const incomeBtn = getEl('rtIncome');
@@ -1111,11 +1174,11 @@ function setupUI() {
         expenseBtn.onclick = () => setRecurType('expense');
     }
 
-    document.querySelectorAll('.freq-tab').forEach(tab => {
+    document.querySelectorAll('.freq-tab-m').forEach(tab => {
         tab.onclick = () => {
-            document.querySelectorAll('.freq-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            recurFreq = tab.dataset.tab;
+            const nextFreq = tab.dataset.tab;
+            setActiveFrequencyTab(nextFreq);
+            recurFreq = nextFreq;
             updateRecurFormVisibility();
             updateRecurSummary();
         };
@@ -1134,8 +1197,19 @@ function setupUI() {
         };
     });
 
-    const monthDayInput = getEl('recurMonthDay');
-    if (monthDayInput) monthDayInput.oninput = updateRecurSummary;
+    const btnAddMonth = getEl('btnAddMonthDay');
+    if (btnAddMonth) {
+        btnAddMonth.onclick = addMonthlyInput;
+    }
+
+    document.querySelectorAll('.m-day-slot').forEach(inp => {
+        inp.oninput = (e) => {
+            validateDayInput(e.target);
+            updateRecurSummary();
+        };
+    });
+
+    checkAddButtonVisibility();
     ['recurAmount', 'recurNote', 'recurStartDate', 'recurEndDate'].forEach(id => {
         const field = getEl(id);
         if (field) field.oninput = updateRecurSummary;
@@ -1656,28 +1730,104 @@ function updateScrollbarWidth() {
 }
 
 // --- Recurring Rule Logic ---
-function prepareRecurringOverlay() {
+function openRecurringOverlay() {
+    if (!isRecurFormInitialized) {
+        resetRecurringForm();
+    }
+    recurringOverlay?.classList.remove('hidden');
+}
+
+function addMonthlyInput() {
+    const wrapper = getEl('monthInputsWrapper');
+    if (!wrapper) return;
+    const currentInputs = wrapper.querySelectorAll('.m-day-slot');
+    if (currentInputs.length >= 5) return;
+
+    const newInput = document.createElement('input');
+    newInput.type = 'number';
+    newInput.className = 'recur-month-input-circle m-day-slot';
+    newInput.min = 1;
+    newInput.max = 31;
+    newInput.value = '';
+    newInput.placeholder = '-';
+
+    newInput.oninput = (e) => {
+        validateDayInput(e.target);
+        updateRecurSummary();
+    };
+    newInput.onblur = (e) => {
+        if (!e.target.value) {
+            e.target.remove();
+        }
+        checkAddButtonVisibility();
+        updateRecurSummary();
+    };
+
+    const addBtn = getEl('btnAddMonthDay');
+    if (addBtn) {
+        wrapper.insertBefore(newInput, addBtn);
+    } else {
+        wrapper.appendChild(newInput);
+    }
+    newInput.focus();
+
+    checkAddButtonVisibility();
+}
+
+function validateDayInput(input) {
+    let val = parseInt(input.value, 10);
+    if (!isNaN(val)) {
+        if (val < 1) input.value = 1;
+        if (val > 31) input.value = 31;
+    }
+}
+
+function checkAddButtonVisibility() {
+    const btn = getEl('btnAddMonthDay');
+    if (!btn) return;
+    const count = document.querySelectorAll('.m-day-slot').length;
+    if (count >= 5) {
+        btn.classList.add('hidden');
+    } else {
+        btn.classList.remove('hidden');
+    }
+}
+
+function resetRecurringForm() {
     recurType = 'expense';
     recurFreq = 'weekly';
-    recurSelectedDays = new Set([1]); // Default to Monday
+    recurSelectedDays = new Set([0]);
 
     const amountInput = getEl('recurAmount');
     if (amountInput) amountInput.value = '';
     const noteInput = getEl('recurNote');
     if (noteInput) noteInput.value = '';
 
-    document.querySelectorAll('.freq-tab').forEach(tab => tab.classList.remove('active'));
-    const weeklyTab = document.querySelector('.freq-tab[data-tab="weekly"]');
-    if (weeklyTab) weeklyTab.classList.add('active');
+    setActiveFrequencyTab('weekly');
 
     document.querySelectorAll('.day-circle').forEach(circle => {
-        circle.classList.remove('selected');
-        if (parseInt(circle.dataset.d, 10) === 1) circle.classList.add('selected');
+        const dayVal = parseInt(circle.dataset.d, 10);
+        if (dayVal === 0) {
+            circle.classList.add('selected');
+        } else {
+            circle.classList.remove('selected');
+        }
     });
 
-    const monthDayInput = getEl('recurMonthDay');
+    const monthWrapper = getEl('monthInputsWrapper');
+    if (monthWrapper) {
+        const slots = monthWrapper.querySelectorAll('.m-day-slot');
+        slots.forEach((el, index) => {
+            if (index === 0) {
+                el.value = '1';
+            } else {
+                el.remove();
+            }
+        });
+        checkAddButtonVisibility();
+    }
+
     const today = new Date();
-    if (monthDayInput) monthDayInput.value = today.getDate();
 
     const startInput = getEl('recurStartDate');
     const endInput = getEl('recurEndDate');
@@ -1691,7 +1841,17 @@ function prepareRecurringOverlay() {
     setRecurType('expense');
     updateRecurFormVisibility();
     updateRecurSummary();
-    recurringOverlay?.classList.remove('hidden');
+    isRecurFormInitialized = true;
+}
+
+function setActiveFrequencyTab(target) {
+    document.querySelectorAll('.freq-tab-m').forEach(tab => {
+        if (tab.dataset.tab === target) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
 }
 
 function setRecurType(type) {
@@ -1723,17 +1883,24 @@ function updateRecurFormVisibility() {
     if (recurFreq === 'daily') daily?.classList.remove('hidden');
 }
 
+function getMonthDaysFromUI() {
+    const inputs = Array.from(document.querySelectorAll('.m-day-slot'));
+    return inputs
+        .map(inp => parseInt(inp.value, 10))
+        .filter(val => !isNaN(val) && val > 0);
+}
+
 function updateRecurSummary() {
     const summaryEl = getEl('recurSummary');
     if (!summaryEl) return;
     const startInput = getEl('recurStartDate');
     const endInput = getEl('recurEndDate');
     const amountInput = getEl('recurAmount');
-    const monthDayInput = getEl('recurMonthDay');
 
     const startDate = startInput?.valueAsDate;
     const endDate = endInput?.valueAsDate;
     const amount = parseFloat(amountInput?.value || '0');
+    const monthDays = getMonthDaysFromUI();
     if (!startDate || !endDate || !amount) {
         summaryEl.textContent = 'Please fill in amount and dates.';
         return;
@@ -1746,9 +1913,12 @@ function updateRecurSummary() {
         summaryEl.textContent = 'Select at least one weekday.';
         return;
     }
+    if (recurFreq === 'monthly' && monthDays.length === 0) {
+        summaryEl.textContent = 'Enter at least one day of the month.';
+        return;
+    }
 
     const noteVal = (getEl('recurNote')?.value || '').trim();
-    const monthDay = parseInt(monthDayInput?.value || '1', 10) || 1;
     const previewTxs = generateRecurringTransactions({
         amount,
         note: noteVal,
@@ -1757,7 +1927,7 @@ function updateRecurSummary() {
         type: recurType,
         freq: recurFreq,
         weekdays: new Set(recurSelectedDays),
-        monthDay
+        monthDays
     });
 
     if (previewTxs.length === 0) {
@@ -1765,14 +1935,20 @@ function updateRecurSummary() {
         return;
     }
 
-    summaryEl.textContent = `Will create ${previewTxs.length} transactions from ${formatDate(startDate)} to ${formatDate(endDate)}.`;
+    let summaryText = `Will create ${previewTxs.length} transactions from ${formatDate(startDate)} to ${formatDate(endDate)}.`;
+    if (recurFreq === 'monthly') {
+        summaryText += ` On days: ${monthDays.join(', ')}.`;
+    }
+    summaryEl.textContent = summaryText;
 }
 
-function generateRecurringTransactions({ amount, note = '', startDate, endDate, type = 'expense', freq = 'weekly', weekdays = new Set(), monthDay = 1 }) {
+function generateRecurringTransactions({ amount, note = '', startDate, endDate, type = 'expense', freq = 'weekly', weekdays = new Set(), monthDays = [] }) {
     const txs = [];
     if (!amount || !startDate || !endDate) return txs;
-    const start = normalizeToStartOfDay(startDate);
-    const end = normalizeToStartOfDay(endDate);
+
+    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
     if (end < start) return txs;
 
     const pushTx = (dateObj) => {
@@ -1788,38 +1964,45 @@ function generateRecurringTransactions({ amount, note = '', startDate, endDate, 
     };
 
     if (freq === 'daily') {
-        for (let d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             pushTx(new Date(d));
         }
-        return txs;
-    }
-
-    if (freq === 'weekly') {
-        const days = weekdays && weekdays.size > 0 ? Array.from(weekdays) : [start.getDay()];
-        const daySet = new Set(days.map(v => parseInt(v, 10)));
-        for (let d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
-            if (daySet.has(d.getDay())) {
+    } else if (freq === 'weekly') {
+        const weekSet = weekdays instanceof Set ? weekdays : new Set(Array.isArray(weekdays) ? weekdays : []);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            if (weekSet.has(d.getDay())) {
                 pushTx(new Date(d));
             }
         }
-        return txs;
-    }
 
-    if (freq === 'monthly') {
-        const dayVal = Math.min(Math.max(parseInt(monthDay, 10) || 1, 1), 31);
-        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-        while (cursor.getTime() <= end.getTime()) {
-            const year = cursor.getFullYear();
-            const month = cursor.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const targetDay = Math.min(dayVal, daysInMonth);
-            const candidate = new Date(year, month, targetDay);
-            if (candidate.getTime() >= start.getTime() && candidate.getTime() <= end.getTime()) {
-                pushTx(candidate);
-            }
+    }else if (freq === 'monthly') {
+        // [Logic Change] Allow duplicates (e.g. input 5, 5 => create two txs on 5th)
+        // Filter invalid numbers but keep duplicates
+        const targetDays = monthDays.filter(d => d >= 1 && d <= 31);
+
+        if (targetDays.length === 0) return txs;
+
+        const cursor = new Date(start);
+        cursor.setDate(1); 
+
+        while (cursor <= end) {
+            const currentYear = cursor.getFullYear();
+            const currentMonth = cursor.getMonth();
+
+            targetDays.forEach(day => {
+                const candidate = new Date(currentYear, currentMonth, day);
+
+                // Check if day exists in this month
+                if (candidate.getMonth() === currentMonth) {
+                    if (candidate >= start && candidate <= end) {
+                        pushTx(candidate);
+                    }
+                }
+            });
+
             cursor.setMonth(cursor.getMonth() + 1);
+            cursor.setDate(1);
         }
-        return txs;
     }
 
     return txs;
@@ -1830,7 +2013,7 @@ function executeRecurringAdd() {
     const noteVal = (getEl('recurNote')?.value || '').trim();
     const startDate = getEl('recurStartDate')?.valueAsDate;
     const endDate = getEl('recurEndDate')?.valueAsDate;
-    const monthDay = parseInt(getEl('recurMonthDay')?.value || '1', 10) || 1;
+    const monthDays = getMonthDaysFromUI();
 
     if (!amountVal || !startDate || !endDate) {
         alert('Missing fields!');
@@ -1844,6 +2027,10 @@ function executeRecurringAdd() {
         alert('Please select at least one weekday.');
         return;
     }
+    if (recurFreq === 'monthly' && monthDays.length === 0) {
+        alert('Please enter at least one day of the month.');
+        return;
+    }
 
     const newTxs = generateRecurringTransactions({
         amount: amountVal,
@@ -1853,7 +2040,7 @@ function executeRecurringAdd() {
         type: recurType,
         freq: recurFreq,
         weekdays: new Set(recurSelectedDays),
-        monthDay
+        monthDays
     });
 
     if (newTxs.length === 0) {
@@ -1865,6 +2052,7 @@ function executeRecurringAdd() {
     newTxs.forEach(tx => transactions.push(tx));
     setCurrentTransactions(transactions);
     recurringOverlay?.classList.add('hidden');
+    resetRecurringForm();
 
     if (currentViewMode === 'timeline') {
         resetViewAroundDate(currentNavDate, 'auto');

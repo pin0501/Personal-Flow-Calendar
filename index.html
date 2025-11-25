@@ -79,9 +79,6 @@
                         
                         <div id="flowDropdown" class="flow-dropdown hidden">
                             <div id="flowListContainer"></div>
-                            <div class="flow-item action-item" id="btnOpenRecurringOverlay">
-                                <span>⚡ Add Recurring Rule</span>
-                            </div>
                             <div class="flow-action" id="btnAddFlow">+ New Flow</div>
                         </div>
                     </div>
@@ -167,42 +164,51 @@
                 </div>
             </div>
 
-            <div id="btnOpenFilter" class="btn-footer-filter">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
+            <div class="footer-right-controls">
+                <div id="btnOpenFilter" class="btn-footer-filter" title="Filter">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                </div>
+
+                <div id="btnOpenRecurringFooter" class="btn-footer-action primary" title="Add Recurring Rule">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                </div>
             </div>
         </footer>
     </div>
 
     <div id="recurringOverlay" class="overlay hidden" style="z-index: 500;">
-        <div class="login-card" style="max-width: 450px;">
-            <div id="btnRecurClose" class="btn-close-card">✕</div>
-            <div class="overlay-title clean-font" style="color: #000; margin-top: 20px; text-align: center;">
-                ADD RECURRING
+        <div class="login-card recur-card-layout">
+
+            <div class="recur-card-header">
+                <div class="overlay-title clean-font recur-card-title">REPEAT RULE</div>
+                <div id="btnRecurClose" class="btn-close-card">✕</div>
             </div>
-            
-            <div class="recur-form-container">
-                
+
+            <div class="recur-form-container recur-form-body">
+
                 <div class="recur-type-switch">
-                    <div class="r-type-btn" data-val="income" id="rtIncome">Income</div>
-                    <div class="r-type-btn active" data-val="expense" id="rtExpense">Expense</div>
+                    <div class="r-type-btn" data-val="income" id="rtIncome">INCOME</div>
+                    <div class="r-type-btn active" data-val="expense" id="rtExpense">EXPENSE</div>
                 </div>
 
                 <div class="recur-input-group">
-                    <input type="number" id="recurAmount" class="recur-input amount" placeholder="Amount ($)">
-                    <input type="text" id="recurNote" class="recur-input" placeholder="Note (e.g. Rent, Salary)">
+                    <input type="number" id="recurAmount" class="recur-input amount" placeholder="$0">
+                    <input type="text" id="recurNote" class="recur-input" placeholder="Note">
                 </div>
 
-                <div class="form-group">
-                    <div class="freq-tabs">
-                        <div class="freq-tab active" data-tab="weekly">Weekly</div>
-                        <div class="freq-tab" data-tab="monthly">Monthly</div>
-                        <div class="freq-tab" data-tab="daily">Daily</div>
+                <div class="form-group recur-form-group">
+                    <div class="freq-tabs-modern" style="margin-bottom: 0;">
+                        <div class="freq-tab-m active" data-tab="weekly">Weekly</div>
+                        <div class="freq-tab-m" data-tab="monthly">Monthly</div>
+                        <div class="freq-tab-m" data-tab="daily">Daily</div>
                     </div>
 
                     <div id="optWeekly" class="freq-option-panel">
-                        <label>Repeat On</label>
                         <div class="week-picker">
                             <div class="day-circle" data-d="0">S</div>
                             <div class="day-circle" data-d="1">M</div>
@@ -214,37 +220,37 @@
                         </div>
                     </div>
 
-                    <div id="optMonthly" class="freq-option-panel hidden">
-                        <div class="month-day-input-wrapper">
-                            <span>On Day</span>
-                            <input type="number" id="recurMonthDay" class="mini-input" value="1" min="1" max="31" style="width: 60px; text-align: center;">
-                            <span>of every month</span>
+                    <div id="optMonthly" class="freq-option-panel hidden" style="flex-direction: column; gap: 5px; padding: 5px 0;">
+                        <div class="month-inputs-container" id="monthInputsWrapper">
+                            <input type="number" class="recur-month-input-circle m-day-slot" value="1" min="1" max="31">
+                            <div class="btn-add-month-day" id="btnAddMonthDay">+</div>
                         </div>
+                        <div style="font-size: 0.75rem; color: #ccc;">Day of month</div>
                     </div>
 
                     <div id="optDaily" class="freq-option-panel hidden">
-                        <span style="font-size:0.9rem; color:#666;">Repeats every single day.</span>
+                        <span style="color: #999; font-size: 0.9rem;">Repeat every single day</span>
                     </div>
                 </div>
 
-                <div class="recur-date-range">
-                    <div>
-                        <label class="date-label">Start Date</label>
-                        <input type="date" id="recurStartDate" class="recur-input" style="font-family: var(--font-sans);">
+                <div class="recur-date-range recur-date-group">
+                    <div class="date-field-group">
+                        <label class="summary-label" style="margin-bottom: 4px; text-align: left;">STARTS</label>
+                        <input type="date" id="recurStartDate" class="recur-input minimal-date">
                     </div>
-                    <div>
-                        <label class="date-label">End Date</label>
-                        <input type="date" id="recurEndDate" class="recur-input" style="font-family: var(--font-sans);">
+                    <div class="date-field-group">
+                        <label class="summary-label" style="margin-bottom: 4px; text-align: left;">ENDS</label>
+                        <input type="date" id="recurEndDate" class="recur-input minimal-date">
                     </div>
                 </div>
 
-                <div class="smart-summary" id="recurSummary">
-                    Configuring...
-                </div>
+                <div class="smart-summary" id="recurSummary"></div>
 
-                <button id="btnRecurConfirm" class="btn-black" style="width: 100%; margin-top: 10px;">
-                    CREATE TRANSACTIONS
+                <button id="btnRecurConfirm" class="btn-black recur-btn-confirm">
+                    SAVE RULE
                 </button>
+
+                <div class="recur-spacer"></div>
             </div>
         </div>
     </div>

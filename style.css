@@ -80,9 +80,7 @@ body {
 }
 
 /* 2. Calendar View: Non-current Month Cells */
-.main-cal-cell.other-month {
-    background-color: #fcfcfc;
-}
+
 
 .main-cal-cell.other-month .m-day {
     color: #e5e7eb !important;
@@ -379,18 +377,7 @@ body {
 }
 .dropdown-arrow:hover { color: #000; }
 
-/* Mobile 適配 */
-@media (max-width: 700px) {
-    .flow-name-input { 
-        width: 90px; 
-        /* 手機版可能需要微調 padding 來抵消字體渲染差異，但在上述設定下應已對齊 */
-    }
-    .editable-name { max-width: 100px; }
-    .flow-dropdown {
-        width: 180px;
-        left: 0;
-    }
-}
+
 
 .flow-dropdown {
     position: absolute;
@@ -971,20 +958,22 @@ body {
    5. Footer (Common)
    ========================================= */
 .bottom-summary-bar {
-    flex: 0 0 auto;
-    height: 80px;
-    background: #fff;
-    border-top: 2px solid #000;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 40px;
+    height: 80px;
+    background: #fff;
+    border-top: 2px solid #000;
+    flex-wrap: nowrap;
 }
 
-.footer-left-controls {
+.footer-left-controls,
+.footer-right-controls {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 8px;
+    flex: 0 0 auto;
 }
 
 .summary-left {
@@ -1019,7 +1008,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    min-width: 0; /* Allow shrinking */
     overflow: hidden;
 }
 
@@ -1061,27 +1050,30 @@ body {
     line-height: 1;
 }
 
-/* Footer Filter Button */
-.btn-footer-filter {
-    background: transparent;
-    border: none;
+/* Right Controls */
+.btn-footer-action.primary {
+    background: #000;
+    color: #fff;
     width: 40px;
     height: 40px;
-    border-radius: 4px;
-    cursor: pointer;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: 0.2s;
-    color: var(--text-primary);
-    padding: 0;
-    flex: 0 0 auto; 
+    cursor: pointer;
+    transition: transform 0.2s;
 }
+.btn-footer-action.primary:hover { transform: scale(1.05); }
 
-.btn-footer-filter:hover {
-    background: #f5f5f5;
-    color: #000;
+/* Footer Filter Button */
+.btn-footer-filter {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
 }
+.btn-footer-filter:hover { background: #f5f5f5; }
 
 /* =========================================
    6. Footer Day Editor Components
@@ -1266,6 +1258,20 @@ body {
     padding: 10px;
     line-height: 1;
     color: #000;
+}
+
+
+
+/* Overlay header helper */
+.overlay-header-fixed {
+    position: relative;
+    height: 50px;
+    flex: 0 0 50px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
 }
 
 /* Filter List */
@@ -1481,24 +1487,7 @@ body {
     border-color: var(--expense-color);
 }
 
-/* =========================================
-   Mobile Optimization
-   ========================================= */
-@media (max-width: 700px) {
-    .filter-controls {
-        padding: 10px 15px;
-        gap: 10px;
-    }
 
-    .filter-search-wrapper {
-        min-width: 0;
-    }
-
-    .filter-chip {
-        padding: 6px 10px;
-        font-size: 0.7rem;
-    }
-}
 
 /* Edit Icon */
 .edit-icon-svg {
@@ -1718,6 +1707,9 @@ body {
 .bottom-summary-bar.editing .btn-footer-filter {
     display: none !important;
 }
+.bottom-summary-bar.editing .footer-right-controls {
+    display: none !important;
+}
 
 /* 2. Unified Date Label Style (Matches TOTAL FORECAST) */
 .bottom-summary-bar.editing #editorDateLabel {
@@ -1752,15 +1744,7 @@ body {
     }
 
     /* Editor Body */
-    .bottom-summary-bar.editing .editor-body {
-        display: block !important;
-        width: auto !important;
-        height: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* Close Button (X) */
+    /* Close Button (X) - Visual Center Fix */
     .bottom-summary-bar.editing .btn-mini-close {
         position: absolute !important;
         right: 40px !important; 
@@ -1772,9 +1756,15 @@ body {
         border: none !important;
         color: #999 !important;
         font-size: 1.4rem !important;
+        
         display: flex !important;
         align-items: center;
         justify-content: center;
+        
+        /* [Visual Fix] Nudge the X symbol up to align with the + button */
+        padding-bottom: 4px !important;
+        line-height: 1 !important;
+        
         cursor: pointer;
         z-index: 2000;
         transition: color 0.2s ease;
@@ -1847,144 +1837,7 @@ body {
 }
 
 
-/* =========================================
-   [MEDIA QUERIES] Mobile (< 700px)
-   ========================================= */
-@media (max-width: 700px) {
-    :root { --grid-def: 1fr; }
-    .list-header { display: none; }
 
-    /* Timeline Rows */
-    .planning-row, .detail-item, .quick-input { display: flex; flex-wrap: wrap; height: auto; min-height: 80px; padding: 10px 20px; gap: 8px; }
-    .row-date { width: 100%; margin-bottom: 8px; }
-    .detail-spacer { display: none; }
-    .quick-input-field { width: 48%; }
-    .quick-input-field.note { width: 100%; }
-    .btn-quick-add, .d-del { margin-left: auto; }
-
-    /* Top Nav */
-    .top-navigation { padding: 0; height: auto; border-bottom: 2px solid var(--border-color); flex-direction: column; overflow: visible; }
-    .nav-layer-tools { position: relative; width: 100%; height: 50px; background: #fff; z-index: 10; display: flex; padding: 0 10px; transform: none; pointer-events: auto; border-bottom: 1px solid #f0f0f0; transition: height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
-    .nav-layer-tools:not(.show-tools) { height: 0; opacity: 0; border-bottom: none; }
-    .nav-layer-tools.show-tools { height: 50px; opacity: 1; }
-    .nav-layer-month { position: relative; width: 100%; height: 40px; top: auto; left: auto; transform: none !important; display: flex; gap: 60px; z-index: 5; background: #fff; }
-    .current-month-display { font-size: 1.1rem; margin: 0; font-weight: 700; }
-
-    /* Overlays */
-    .overlay-header, .picker-header { height: 50px; min-height: 50px; padding: 0 40px; }
-    .btn-close, .btn-close-card { right: 15px; }
-    .picker-range-display { flex-direction: column; align-items: flex-start; gap: 2px; font-size: 1.1rem; }
-    .picker-arrow { transform: rotate(90deg); margin: 4px 0; }
-    #calRight { display: none; }
-    .cal-pane { width: 100%; max-width: 280px; }
-    .login-card { width: 90%; max-height: 80vh; overflow-y: auto; }
-
-    /* Filter List Mobile */
-    .filter-item-row {
-        /* 手機版：收入支出各 1 等分，備註 1.5 等分，按鈕維持 30px */
-        grid-template-columns: 1fr 1fr 1.5fr 30px !important; 
-        gap: 4px;
-        padding: 10px 8px; /* 這裡也建議補上 padding */
-    }
-
-    /* Footer Mobile */
-    .bottom-summary-bar { padding: 8px 12px; height: auto; gap: 10px; }
-    .summary-left { padding: 4px; width: 32px; justify-content: center; }
-    .mode-label { display: none; }
-    .equation-wrapper { width: 100%; line-height: 1.3; }
-    body.calendar-view-active .bottom-summary-bar .footer-left-controls { display: none !important; }
-    body.calendar-view-active .bottom-summary-bar .equation-wrapper { flex: 1 1 100%; width: 100%; margin: 0; }
-    .summary-label { display: block; font-size: 0.65rem; margin-bottom: 4px; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .equation-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px; font-size: 1rem; }
-    .eq-item.balance { flex-basis: 100%; text-align: center; border-top: 1px solid #f0f0f0; margin-top: 4px; padding-top: 2px; font-size: 1rem; }
-
-    /* Editor Mode Mobile Layout */
-    .bottom-summary-bar.editing {
-        position: relative; 
-        padding-top: 30px !important; 
-        height: auto !important;
-    }
-    .bottom-summary-bar.editing .footer-left-controls,
-    .bottom-summary-bar.editing .equation-wrapper {
-        flex: 1 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    .bottom-summary-bar.editing #editorDateLabel {
-        position: absolute;
-        top: 10px;
-        left: 12px;
-    }
-    .bottom-summary-bar.editing .btn-mini-close {
-        position: absolute !important;
-        top: 5px !important;
-        right: 5px !important;
-        width: 30px !important;
-        height: 30px !important;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        color: #999;
-        transform: none !important;
-        z-index: 20;
-        font-size: 1.2rem;
-    }
-    .bottom-summary-bar.editing .editor-body {
-        padding: 0 !important;
-        margin-top: 4px;
-        flex-direction: column;
-        align-items: stretch;
-        width: 100% !important;
-        display: flex !important;
-    }
-    .editor-inputs { width: 100%; justify-content: space-between; gap: 4px; }
-    .mini-input { width: 30% !important; }
-    .footer-day-editor { justify-content: flex-start; padding-top: 4px; }
-    .editor-tx-list { width: 100%; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; margin-bottom: 4px; }
-
-    /* 1. 隱藏電腦版 Chips */
-    .m-chip {
-        display: none !important;
-    }
-
-    /* 2. 資料容器：強制橫向排列 (Row) + 換行 (Wrap) */
-    .m-data {
-        display: flex !important;
-        flex-direction: row !important; /* [關鍵修正] 確保橫向排列 */
-        flex-wrap: wrap !important;     /* 空間不夠時自動換行 */
-        align-content: flex-start !important;
-        justify-content: flex-start !important; /* 靠左對齊 */
-        gap: 3px; /* 點與點的間距 */
-        padding: 2px 0 2px 2px;
-        width: 100%;
-        height: 100%;
-    }
-
-    /* 3. 手機版圓點基礎樣式 */
-    .mobile-day-dot {
-        display: block !important;
-        width: 6px;   /* 點的大小 */
-        height: 6px;  /* 點的大小 */
-        border-radius: 50%;
-        flex-shrink: 0; /* 防止圓點變形 */
-        
-        /* 預設無邊框 */
-        background-color: transparent; 
-    }
-
-    /* 顏色定義 */
-    .mobile-day-dot.dot-inc { background-color: var(--income-color); }
-    .mobile-day-dot.dot-exp { background-color: var(--expense-color); }
-    .mobile-day-dot.dot-neutral { background-color: #d1d5db; } /* 純 Note 顯示淺灰點 */
-
-    /* [關鍵修正] 備註外框 (向內) */
-    /* 只有 dot-bordered 會觸發 (即有收支 + 有備註) */
-    /* 使用 inset 讓灰框「吃」進原本的綠/紅點內，保持外部大小一致 */
-    .mobile-day-dot.dot-bordered {
-        box-shadow: inset 0 0 0 0.75px #d1d5db; /* 淺灰內框 */
-    }
-}
 
 /* =========================================
    [Updated] Input Styles: Alignment & Placeholders
@@ -2025,24 +1878,7 @@ body {
     color: #ccc;
 }
 
-/* =========================================
-   [Fix] Mobile Timeline Details Compact Mode
-   ========================================= */
-@media (max-width: 700px) {
-    /* Override the shared 80px minimum row height for details */
-    .detail-item {
-        min-height: auto !important;
-        padding: 8px 15px !important;
-        gap: 6px !important;
-        align-items: center !important;
-    }
 
-    /* Optional: tighten the embedded quick input row as well */
-    .quick-input {
-        min-height: auto !important;
-        padding: 10px 15px !important;
-    }
-}
 
 
 
@@ -2066,115 +1902,7 @@ body {
         gap: 8px !important;
         padding: 12px 0 !important;
         border-bottom: 1px solid #f9f9f9 !important;
-        min-height: 40px !important;
-    }
-
-    /* 隱藏 spacer */
-    .detail-item .detail-spacer,
-    .quick-input .detail-spacer {
-        display: none !important;
-    }
-
-    /* 金額欄位：不換行、緊湊 */
-    .d-col.income, 
-    .d-col.expense {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        font-size: 0.9rem !important;
-        padding: 0 !important;
-        text-align: right !important;
-    }
-
-    /* 備註欄位：自動填滿、單行省略 */
-    .d-col.note {
-        flex: 1 !important;
-        width: auto !important;
-        padding-left: 8px !important;
-        text-align: left !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        color: #666 !important;
-    }
-
-    /* 刪除按鈕 */
-    .d-del {
-        flex: 0 0 auto !important;
-        margin-left: 0 !important;
-    }
-
-    /* ------------------------------------------------ */
-
-    /* --- 2. 輸入列 (改回換行模式 / 兩行佈局) --- */
-    .quick-input {
-        display: flex !important;
-        flex-wrap: wrap !important; /* [關鍵] 允許換行 */
-        gap: 8px !important;
-        padding: 10px 0 !important;
-        margin-top: 4px !important;
-        align-items: center !important;
-        border: none !important;
-    }
-
-    .quick-input-field {
-        height: 36px !important;
-        padding: 0 8px !important;
-        border-radius: 4px !important;
-        margin: 0 !important;
-    }
-
-    /* 第一行：收入與支出 (各佔一半) */
-    .quick-input-field.inc, 
-    .quick-input-field.exp {
-        width: calc(50% - 4px) !important; /* 減去 gap 的一半 */
-        flex: unset !important; /* 取消自動伸縮 */
-        text-align: center !important; 
-    }
-
-    /* 第二行：備註 (自動填滿) */
-    .quick-input-field.note {
-        width: auto !important;
-        flex: 1 !important; /* 吃掉這一行剩下的空間 */
-        text-align: left !important;
-    }
-
-    /* [修改] 輸入列按鈕：統一改為圓形 */
-    .btn-quick-add {
-        /* 強制圓形 */
-        border-radius: 50% !important; 
-        
-        /* 尺寸微調，確保是正圓 */
-        width: 40px !important;
-        height: 40px !important;
-        flex: 0 0 40px !important;
-        
-        margin-left: 0 !important;
-        font-size: 1.4rem !important;
-        
-        /* 確保內容置中 */
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        padding: 0 !important; /* 移除 padding 避免變形 */
-    }
-}
-
-/* =========================================
-   [New] Sync Conflict Overlay
-   ========================================= */
-.sync-list-container {
-    width: 100%;
-    max-height: 200px;
-    overflow-y: auto;
-    border-top: 1px solid #eee;
-    border-bottom: 1px solid #eee;
-    padding: 10px 0;
-}
-
-.sync-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+   justify-content: space-between;
     padding: 12px 0;
     border-bottom: 1px solid #f9f9f9;
 }
@@ -2211,13 +1939,10 @@ body {
     transition: 0.2s;
     display: flex;
     align-items: center;
-    justify-content: center;
-}
-
-.btn-sync-delete:hover {
-    color: #dc2626;
+   color: #dc2626;
     background: #fff5f5;
     border-radius: 4px;
+}
 }
 
 /* =========================================
@@ -2253,7 +1978,7 @@ body {
 .login-card .btn-close-card,
 .profile-card-layout .btn-close-card {
     position: absolute;
-    top: 20px !important;
+    top: 0px !important;
     right: 20px !important;
     transform: none !important;
     color: #999;
@@ -2568,14 +2293,6 @@ body {
     color: #555;
 }
 
-.smart-summary {
-    text-align: center;
-    font-size: 0.85rem;
-    color: #666;
-    margin-top: 10px;
-    font-style: italic;
-}
-
 /* Mobile Fix for Magic Button in Timeline */
 @media (max-width: 700px) {
     .btn-quick-magic {
@@ -2589,139 +2306,136 @@ body {
     }
 }
 
-/* =========================================
-   [Refactor] Advanced Recurring UI
-   ========================================= */
-
-/* 1. Remove Old Magic Buttons styling if needed, 
-   but we can keep .btn-mini-magic hidden in HTML */
-
-/* 2. New Recurring Menu Item */
-.flow-item.action-item {
-    color: #555;
-    border-top: 1px solid #f5f5f5;
-    margin-top: 4px;
-    padding-top: 12px;
-    font-weight: 700;
-    color: var(--text-secondary);
-}
-
-.flow-item.action-item:hover {
-    color: #000;
-    background: #fafafa;
-}
-
-/* 3. Advanced Recurring Overlay */
+/* --- Recurring Overlay Tweaks --- */
 .recur-form-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 10px 0;
+    gap: 10px;
+    padding-bottom: 20px;
+    overflow-y: auto;
 }
 
-/* Type Selector (Inc/Exp) */
 .recur-type-switch {
     display: flex;
-    background: #f0f0f0;
+    background: #f3f4f6;
     border-radius: 8px;
-    padding: 4px;
+    padding: 3px;
 }
 
 .r-type-btn {
     flex: 1;
     text-align: center;
     padding: 8px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
     border-radius: 6px;
-    transition: 0.2s;
-    color: #999;
+    transition: all 0.2s;
+    color: #9ca3af;
 }
 
 .r-type-btn.active[data-val="income"] {
     background: #fff;
     color: var(--income-color);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .r-type-btn.active[data-val="expense"] {
     background: #fff;
     color: var(--expense-color);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Inputs */
 .recur-input-group {
-    display: grid;
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
+/* Overlay Inputs */
 .recur-input {
-    width: 100%;
-    padding: 12px;
+    height: 42px;
+    padding: 0 12px;
+    font-family: var(--font-sans);
     border: 1px solid #ddd;
     border-radius: 6px;
-    font-size: 1rem;
-    font-family: var(--font-sans);
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+    background: #fff;
 }
+.recur-input:focus { border-color: #000; outline: none; }
+.recur-input.amount { font-family: var(--font-serif); font-weight: 700; font-size: 1.1rem; }
 
-.recur-input.amount {
-    font-family: var(--font-serif);
-    font-weight: 700;
-    font-size: 1.2rem;
-}
-
-/* Frequency Selector */
-.freq-tabs {
+/* 2. Frequency Panel: 固定高度 & 垂直置中 */
+.freq-option-panel {
+    height: 60px;        /* [關鍵] 強制固定高度，防止切換時跳動 */
+    min-height: 60px;
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+    align-items: center; /* 內容垂直置中 */
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 0;
+    overflow: hidden;    /* 防止內容溢出 */
 }
 
-.freq-tab {
+/* Weekly Panel 特別處理 */
+#optWeekly.freq-option-panel {
+    display: flex;       /* 確保 Flex 屬性生效 */
+    align-items: center; /* 圓圈垂直置中 */
+}
+
+#btnRecurClose:hover { color: #000 !important; }
+
+.freq-tabs-modern {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 12px;
+}
+
+.freq-tab-m {
+    flex: 1;
+    text-align: center;
+    padding-bottom: 8px;
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #ccc;
     cursor: pointer;
-    padding-bottom: 4px;
     border-bottom: 2px solid transparent;
     transition: 0.2s;
 }
 
-.freq-tab:hover { color: #999; }
+.freq-tab-m:hover { color: #999; }
 
-.freq-tab.active {
+.freq-tab-m.active {
     color: #000;
     border-bottom-color: #000;
 }
 
-/* Week Day Picker (Circles) */
 .week-picker {
+    margin-top: 0; 
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    margin-top: 10px;
 }
 
 .day-circle {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     border: 1px solid #eee;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 700;
-    color: #999;
+    color: #ccc;
     cursor: pointer;
-    transition: 0.2s;
+    transition: all 0.2s;
 }
 
 .day-circle:hover {
-    border-color: #ccc;
+    border-color: #999;
     color: #555;
 }
 
@@ -2731,7 +2445,6 @@ body {
     border-color: #000;
 }
 
-/* Month Day Input */
 .month-day-input-wrapper {
     display: flex;
     align-items: center;
@@ -2740,16 +2453,583 @@ body {
     color: #555;
 }
 
+.month-inputs-container {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* 填滿面板高度 */
+}
+
+/* Style matches .day-circle but for input */
+.recur-month-input-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 0;
+    margin: 0;
+
+    /* [關鍵] 文字絕對置中 */
+    text-align: center;
+    line-height: 38px; /* 行高 = 高度 */
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 1rem;
+    appearance: textfield;
+
+    -moz-appearance: textfield;
+}
+.recur-month-input-circle:focus {
+    outline: 2px solid #ddd;
+    outline-offset: 2px;
+}
+/* Remove spinners */
+.recur-month-input-circle::-webkit-outer-spin-button,
+.recur-month-input-circle::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.btn-add-month-day {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px dashed #ccc;
+    background: #fff;
+    color: #999;
+    font-size: 1.4rem; /* 字體稍大 */
+    font-weight: 300;
+
+    /* Flex 置中 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 2px; /* 微調 + 號視覺重心 */
+
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+}
+.btn-add-month-day:hover {
+    border-color: #000;
+    color: #000;
+    background: #f9f9f9;
+}
+
 .recur-date-range {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
+}
+
+.date-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .date-label {
-    font-size: 0.7rem;
-    color: #999;
-    margin-bottom: 4px;
-    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+}
+
+.minimal-date {
+    padding: 8px;
+    font-size: 0.85rem;
+}
+
+.smart-summary {
+    font-size: 0.8rem;
+    color: #6b7280;
+    text-align: center;
+    line-height: 1.5;
+    margin-top: 10px;
+    margin-bottom: 10px !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+}
+
+/* [Fix] Match Recur Button to Sync Button */
+#btnRecurConfirm {
+    padding: 14px 24px !important;
+    font-size: 0.95rem !important;
+    margin-top: 0 !important;
+    width: 100%;
+    background: #000;
+    color: #fff;
+    border: none;
     font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px; /* Match base radius */
+}
+
+/* Hover state */
+#btnRecurConfirm:hover {
+    background: #333;
+}
+
+/* =========================================
+   [Moved Fix] Monthly Layout Correction
+   ========================================= */
+
+/* 修正 Monthly 面板對齊 (強制改回橫向) */
+#optMonthly.freq-option-panel {
+    flex-direction: row !important; 
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    height: 60px !important;
+}
+
+/* 隱藏 "Day of month" 文字 */
+#optMonthly.freq-option-panel > div:last-child {
+    display: none !important;
+}
+
+/* 確保 Monthly 輸入框容器垂直置中 */
+#monthInputsWrapper {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================================
+   [FINAL FIX] REPEAT RULE Overlay Close Button (Revised)
+   ========================================= */
+
+/* 使用 ID 選擇器 #btnRecurClose 確保權重最高，無視其他 class 設定 */
+#recurringOverlay #btnRecurClose {
+    /* 1. 定位：絕對置頂置右，完全貼齊 Header */
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+
+    /* 2. 尺寸：50px 正方形 (與 Header 等高) */
+    width: 50px !important;
+    height: 50px !important;
+
+    /* 3. 對齊：Flex 置中 */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    /* [視覺修正關鍵] 
+       1. padding-bottom: 12px (加大力度，原本是 6px)
+          這會吃掉下方空間，把 X 顯著往上推。
+    */
+    padding: 0 0 18px 0 !important;
+    
+    /* [雙重保險] 額外向上位移 2px */
+    transform: translateY(-2px) !important;
+
+    /* 4. 外觀：透明背景、淺灰字、行高歸一 */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #9ca3af !important;
+    font-size: 1.5rem !important;
+    line-height: 1 !important; /* 確保字體垂直置中基準一致 */
+    
+    cursor: pointer;
+    z-index: 1000 !important;
+    border-radius: 0 !important;
+    border-top-right-radius: 12px !important; /* 配合卡片圓角 */
+}
+
+/* Hover 狀態：只加深顏色，不要背景色 */
+#recurringOverlay #btnRecurClose:hover {
+    color: #000 !important;
+    background: transparent !important;
+}
+
+/* =========================================
+   [MERGED] Mobile Optimization (< 700px)
+   ========================================= */
+@media (max-width: 700px) {
+    /* Flow Selector */
+    .flow-name-input { 
+        width: 90px; 
+    }
+    .editable-name { max-width: 100px; }
+    .flow-dropdown {
+        width: 180px;
+        left: 0;
+    }
+
+    /* Filter Controls */
+    .filter-controls {
+        padding: 10px 15px;
+        gap: 10px;
+    }
+    .filter-search-wrapper {
+        min-width: 0;
+    }
+    .filter-chip {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+    }
+
+    /* Main Layout */
+    :root { --grid-def: 1fr; }
+    .list-header { display: none; }
+
+    /* Timeline Rows */
+    .planning-row, .detail-item, .quick-input { display: flex; flex-wrap: wrap; height: auto; min-height: 80px; padding: 10px 20px; gap: 8px; }
+    .row-date { width: 100%; margin-bottom: 8px; }
+    .detail-spacer { display: none; }
+    .quick-input-field { width: 48%; }
+    .quick-input-field.note { width: 100%; }
+    .btn-quick-add, .d-del { margin-left: auto; }
+
+    /* Top Nav */
+    .top-navigation { padding: 0; height: auto; border-bottom: 2px solid var(--border-color); flex-direction: column; overflow: visible; }
+    .nav-layer-tools { position: relative; width: 100%; height: 50px; background: #fff; z-index: 10; display: flex; padding: 0 10px; transform: none; pointer-events: auto; border-bottom: 1px solid #f0f0f0; transition: height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+    .nav-layer-tools:not(.show-tools) { height: 0; opacity: 0; border-bottom: none; }
+    .nav-layer-tools.show-tools { height: 50px; opacity: 1; }
+    .nav-layer-month { position: relative; width: 100%; height: 40px; top: auto; left: auto; transform: none !important; display: flex; gap: 60px; z-index: 5; background: #fff; }
+    .current-month-display { font-size: 1.1rem; margin: 0; font-weight: 700; }
+
+    /* Overlays */
+    .overlay-header, .picker-header { height: 50px; min-height: 50px; padding: 0 40px; }
+    .btn-close, .btn-close-card { right: 15px; }
+    .picker-range-display { flex-direction: column; align-items: flex-start; gap: 2px; font-size: 1.1rem; }
+    .picker-arrow { transform: rotate(90deg); margin: 4px 0; }
+    #calRight { display: none; }
+    .cal-pane { width: 100%; max-width: 280px; }
+    .login-card { width: 90%; max-height: 80vh; overflow-y: auto; }
+
+    /* Filter List Mobile */
+    .filter-item-row {
+        grid-template-columns: 1fr 1fr 1.5fr 30px !important; 
+        gap: 4px;
+        padding: 10px 8px;
+    }
+
+    /* Mobile Footer Optimization */
+    .bottom-summary-bar {
+        height: 70px !important;
+        padding: 0 8px !important;
+        flex-wrap: nowrap !important;
+        gap: 5px !important;
+        justify-content: space-between !important;
+    }
+
+    /* Hide Mode Text Label on Mobile */
+    .mode-label {
+        display: none !important;
+    }
+
+    /* Adjust toggle icon container */
+    .summary-left {
+        width: 40px;
+        justify-content: center;
+        padding: 0;
+    }
+
+    /* Increase Icon Size slightly */
+    .toggle-icon {
+        font-size: 1.4rem;
+    }
+
+    .footer-left-controls,
+    .footer-right-controls {
+        flex: 0 0 auto !important;
+        min-width: 40px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .equation-wrapper {
+        flex: 1 !important;
+        width: auto !important;
+        margin: 0 !important;
+        border: none !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+    }
+
+    #forecastContainer .summary-label {
+        display: block !important;
+        font-size: 0.6rem !important;
+        color: #999 !important;
+        margin-bottom: 2px !important;
+        white-space: nowrap !important;
+        text-align: center;
+    }
+
+    .equation-container {
+        font-size: 0.95rem !important;
+        gap: 4px !important;
+        white-space: nowrap !important;
+        justify-content: center;
+    }
+
+    .bottom-summary-bar.editing .footer-right-controls {
+        display: none !important;
+    }
+
+    .bottom-summary-bar.editing .equation-wrapper {
+        display: flex !important;
+    }
+
+    /* Editor Mode Mobile Layout */
+    .bottom-summary-bar.editing {
+        position: relative; 
+        padding-top: 30px !important; 
+        height: auto !important;
+    }
+    .bottom-summary-bar.editing .footer-left-controls,
+    .bottom-summary-bar.editing .equation-wrapper {
+        flex: 1 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .bottom-summary-bar.editing #editorDateLabel {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+    }
+    .bottom-summary-bar.editing .btn-mini-close {
+        position: absolute !important;
+        top: 5px !important;
+        right: 5px !important;
+        width: 30px !important;
+        height: 30px !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        transform: none !important;
+        z-index: 20;
+        font-size: 1.2rem;
+    }
+    .bottom-summary-bar.editing .editor-body {
+        padding: 0 !important;
+        margin-top: 4px;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100% !important;
+        display: flex !important;
+    }
+    .editor-inputs { width: 100%; justify-content: space-between; gap: 4px; }
+    .mini-input { width: 30% !important; }
+    .footer-day-editor { justify-content: flex-start; padding-top: 4px; }
+    .editor-tx-list { width: 100%; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; margin-bottom: 4px; }
+
+    /* 1. 隱藏電腦版 Chips */
+    .m-chip {
+        display: none !important;
+    }
+
+    /* 2. 資料容器：強制橫向排列 (Row) + 換行 (Wrap) */
+    .m-data {
+        display: flex !important;
+        flex-direction: row !important; /* [關鍵修正] 確保橫向排列 */
+        flex-wrap: wrap !important;     /* 空間不夠時自動換行 */
+        align-content: flex-start !important;
+        justify-content: flex-start !important; /* 靠左對齊 */
+        gap: 3px; /* 點與點的間距 */
+        padding: 2px 0 2px 2px;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* 3. 手機版圓點基礎樣式 */
+    .mobile-day-dot {
+        display: block !important;
+        width: 6px;   /* 點的大小 */
+        height: 6px;  /* 點的大小 */
+        border-radius: 50%;
+        flex-shrink: 0; /* 防止圓點變形 */
+        
+        /* 預設無邊框 */
+        background-color: transparent; 
+    }
+
+    /* 顏色定義 */
+    .mobile-day-dot.dot-inc { background-color: var(--income-color); }
+    .mobile-day-dot.dot-exp { background-color: var(--expense-color); }
+    .mobile-day-dot.dot-neutral { background-color: #d1d5db; } /* 純 Note 顯示淺灰點 */
+
+    /* [關鍵修正] 備註外框 (向內) */
+    .mobile-day-dot.dot-bordered {
+        box-shadow: inset 0 0 0 0.75px #d1d5db; /* 淺灰內框 */
+    }
+
+    /* Input Placeholder */
+    .quick-input-field::placeholder {
+        color: #ccc;
+    }
+
+    /* Timeline Details Compact Mode */
+    .detail-item {
+        display: flex !important;
+        flex-wrap: nowrap !important; /* 禁止換行，強制一行 */
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 12px 0 !important;
+        border-bottom: 1px solid #f9f9f9 !important;
+        min-height: 40px !important;
+    }
+
+    /* 隱藏 spacer */
+    .detail-item .detail-spacer,
+    .quick-input .detail-spacer {
+        display: none !important;
+    }
+
+    /* 金額欄位：不換行、緊湊 */
+    .d-col.income, 
+    .d-col.expense {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        font-size: 0.9rem !important;
+        padding: 0 !important;
+        text-align: right !important;
+    }
+
+    /* 備註欄位：自動填滿、單行省略 */
+    .d-col.note {
+        flex: 1 !important;
+        width: auto !important;
+        padding-left: 8px !important;
+        text-align: left !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        color: #666 !important;
+    }
+
+    /* 刪除按鈕 */
+    .d-del {
+        flex: 0 0 auto !important;
+        margin-left: 0 !important;
+    }
+
+    /* --- 2. 輸入列 (改回換行模式 / 兩行佈局) --- */
+    .quick-input {
+        display: flex !important;
+        flex-wrap: wrap !important; /* [關鍵] 允許換行 */
+        gap: 8px !important;
+        padding: 10px 0 !important;
+        margin-top: 4px !important;
+        align-items: center !important;
+        border: none !important;
+        min-height: auto !important;
+    }
+
+    .quick-input-field {
+        height: 36px !important;
+        padding: 0 8px !important;
+        border-radius: 4px !important;
+        margin: 0 !important;
+    }
+
+    /* 第一行：收入與支出 (各佔一半) */
+    .quick-input-field.inc, 
+    .quick-input-field.exp {
+        width: calc(50% - 4px) !important; /* 減去 gap 的一半 */
+        flex: unset !important; /* 取消自動伸縮 */
+        text-align: center !important; 
+    }
+
+    /* 第二行：備註 (自動填滿) */
+    .quick-input-field.note {
+        width: auto !important;
+        flex: 1 !important; /* 吃掉這一行剩下的空間 */
+        text-align: left !important;
+    }
+
+    /* [修改] 輸入列按鈕：統一改為圓形 */
+    .btn-quick-add {
+        /* 強制圓形 */
+        border-radius: 50% !important; 
+        
+        /* 尺寸微調，確保是正圓 */
+        width: 40px !important;
+        height: 40px !important;
+        flex: 0 0 40px !important;
+        
+        margin-left: 0 !important;
+        font-size: 1.4rem !important;
+        
+        /* 確保內容置中 */
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 0 !important; /* 移除 padding 避免變形 */
+    }
+
+    /* Magic Button */
+    .btn-quick-magic {
+        /* Match the circular style of the add button */
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        flex: 0 0 40px !important;
+        margin-left: auto; /* Push to right if needed */
+        margin-right: 8px;
+    }
+}
+
+/* Refactored from HTML inline styles */
+.recur-card-layout {
+    max-width: 420px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 12px;
+    position: relative;
+}
+.recur-card-header {
+    position: relative;
+    height: 50px;
+    flex: 0 0 50px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
+}
+.recur-card-title {
+    color: #000;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+}
+.recur-form-body {
+    padding: 20px 25px 10px 25px;
+    flex: 1;
+}
+.recur-form-group {
+    margin-top: 15px;
+}
+.recur-date-group {
+    margin-top: 10px;
+}
+.recur-btn-confirm {
+    width: 100%;
+    margin-top: 10px;
+    height: 48px;
+    letter-spacing: 0.1em;
+}
+.recur-spacer {
+    height: 20px;
 }
