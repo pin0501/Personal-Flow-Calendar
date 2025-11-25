@@ -1009,6 +1009,12 @@ function openUserProfile() {
         location.reload(); 
     };
     getEl('btnProfileClose').onclick = () => overlay.classList.add('hidden');
+
+    // Update version text dynamically
+    const verEl = getEl('dispAppVersion');
+    if (verEl && window.APP_VERSION) {
+        verEl.textContent = `Personal Flow v${window.APP_VERSION}`;
+    }
 }
 
 function setupAuth() {

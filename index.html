@@ -4,9 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        // [CONFIG] 全域版本號控制
+        const APP_VERSION = '1.2';
+    </script>
     <title>Personal Flow Calendar</title>
 
-    <link rel="stylesheet" href="style.css?v=1.2">
+    <script>
+        document.write(`<link rel="stylesheet" href="style.css?v=${APP_VERSION}">`);
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -438,9 +444,7 @@
         window.doc = doc;
         window.setDoc = setDoc;
         window.getDoc = getDoc;
+    </script> <script>
+        document.write(`<script src="app.js?v=${APP_VERSION}"><\/script>`);
     </script>
-
-    <script src="app.js?v=1.2"></script>
 </body>
-
-</html>
