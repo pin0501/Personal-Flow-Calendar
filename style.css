@@ -2557,7 +2557,6 @@ body {
     height: 100%; /* 填滿面板高度 */
 }
 
-/* Style matches .day-circle but for input */
 .recur-month-input-circle {
     width: 38px;
     height: 38px;
@@ -2568,25 +2567,22 @@ body {
     padding: 0;
     margin: 0;
 
-    /* [關鍵] 文字絕對置中 */
+    /* 文字置中 */
     text-align: center;
-    line-height: 38px; /* 行高 = 高度 */
+    line-height: 38px;
     font-family: var(--font-serif);
     font-weight: 700;
     font-size: 1rem;
-    appearance: textfield;
 
+    /* 消除警告：標準屬性放在最前面 */
+    appearance: textfield;
+    -webkit-appearance: textfield;
     -moz-appearance: textfield;
 }
+
 .recur-month-input-circle:focus {
     outline: 2px solid #ddd;
     outline-offset: 2px;
-}
-/* Remove spinners */
-.recur-month-input-circle::-webkit-outer-spin-button,
-.recur-month-input-circle::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
 }
 
 .btn-add-month-day {
@@ -3020,55 +3016,100 @@ body {
     /* --- 2. 輸入列 (改回換行模式 / 兩行佈局) --- */
     .quick-input {
         display: flex !important;
-        flex-wrap: wrap !important; /* [關鍵] 允許換行 */
-        gap: 8px !important;
-        padding: 10px 0 !important;
-        margin-top: 4px !important;
-        align-items: center !important;
+        flex-wrap: wrap !important;
+        /* [修改] 大幅減少左右留白，從 20px 改為 4px */
+        padding: 10px 4px !important; 
+        /* [修改] 微調間距 */
+        gap: 6px !important;          
         border: none !important;
         min-height: auto !important;
+        align-items: center !important;
+        width: 100% !important; /* 確保填滿容器 */
+        box-sizing: border-box !important;
     }
 
-    .quick-input-field {
+    /* 1. 針對「容器」設定寬度 (左右並列) */
+    .quick-input .input-with-currency {
+        /* [修改] 計算寬度：50% 減去間距的一半 (3px) */
+        width: calc(50% - 3px) !important; 
+        flex: unset !important;            
+        display: flex !important;
+        align-items: center !important;
         height: 36px !important;
-        padding: 0 8px !important;
-        border-radius: 4px !important;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
         margin: 0 !important;
     }
 
-    /* 第一行：收入與支出 (各佔一半) */
-    .quick-input-field.inc, 
-    .quick-input-field.exp {
-        width: calc(50% - 4px) !important; /* 減去 gap 的一半 */
-        flex: unset !important; /* 取消自動伸縮 */
-        text-align: center !important; 
+    /* 2. 容器內的 Input (填滿剩餘空間) */
+    .quick-input .input-with-currency input.quick-input-field {
+        width: 0 !important;
+        flex: 1 !important;
+        border: none !important;
+        padding: 0 6px 0 4px !important;
+        height: 100% !important;
+        text-align: right !important; 
+        border-radius: 0 !important;
+        font-size: 1rem !important; /* 確保字體夠大好點擊 */
     }
 
-    /* 第二行：備註 (自動填滿) */
+    /* 3. 容器內的 Select (固定在右側) */
+    .quick-input .input-with-currency .mini-currency-select {
+        width: 25px !important;
+        flex: 0 0 25px !important;
+        border: none !important;
+        border-left: 1px solid #eee !important;
+        padding: 0 !important;
+        height: 100% !important;
+        background: transparent !important;
+        font-size: 0.6rem !important;
+        text-align: center;
+    }
+
+    /* [FIX] 單幣別模式：強制 wrapper 寬度 50% 以便並排 */
+    .quick-input .single-currency-wrapper {
+        width: calc(50% - 3px) !important; /* 與多幣別保持一致寬度 */
+        margin: 0 !important;
+        display: block !important; /* 確保它是區塊容器 */
+    }
+
+    /* 確保內部的 Input 填滿這個 wrapper */
+    .quick-input .single-currency-wrapper input.quick-input-field {
+        width: 100% !important;
+        text-align: right !important; /* 數字靠右對齊，視覺更整齊 */
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 4. 備註欄 (第二行，自動填滿) */
     .quick-input-field.note {
         width: auto !important;
-        flex: 1 !important; /* 吃掉這一行剩下的空間 */
+        flex: 1 !important;        
         text-align: left !important;
+        margin: 0 !important;
+        height: 40px !important;
+        padding-left: 8px !important; /* 文字稍微往內縮 */
     }
 
-    /* [修改] 輸入列按鈕：統一改為圓形 */
+    /* 5. 新增按鈕 (第二行最右邊) */
     .btn-quick-add {
-        /* 強制圓形 */
-        border-radius: 50% !important; 
-        
-        /* 尺寸微調，確保是正圓 */
+        border-radius: 50% !important;
         width: 40px !important;
         height: 40px !important;
         flex: 0 0 40px !important;
-        
         margin-left: 0 !important;
         font-size: 1.4rem !important;
-        
-        /* 確保內容置中 */
         display: flex !important;
         align-items: center;
         justify-content: center;
-        padding: 0 !important; /* 移除 padding 避免變形 */
+        padding: 0 !important;
+    }
+    
+    /* 隱藏 spacer */
+    .quick-input .detail-spacer {
+        display: none !important;
     }
 
     /* Magic Button */
@@ -3128,4 +3169,2269 @@ body {
 }
 .recur-spacer {
     height: 20px;
+}
+
+/* 新增至 style.css */
+
+/* Currency Badge in Footer */
+.currency-badge {
+    background: #000;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-sans);
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px; width: 16px;
+    left: 2px; bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider { background-color: #000; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Currency Grid in Settings */
+.currency-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.currency-check-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 6px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+.currency-check-item.checked {
+    background: #f0f0f0;
+    border-color: #ccc;
+    font-weight: 700;
+}
+
+/* =========================================
+   [Global] Input Standardization
+   ========================================= */
+
+/* 1. Hide Number Spinners (Chrome, Safari, Edge, Opera) */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+/* Firefox */
+input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* 2. Unified Input Group (Timeline, Footer, Recur) */
+.input-with-currency {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    width: 100%;
+    overflow: hidden; /* Ensure rounding works */
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+.input-with-currency:focus-within {
+    border-color: #000;
+}
+
+/* The Input Field */
+.input-with-currency input,
+.recur-input.amount,
+.mini-input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    flex: 1;
+    min-width: 0; /* Allow shrinking in flex */
+    padding: 8px 10px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    color: #000;
+    
+    /* [Requirement] Text Align Right */
+    text-align: right; 
+    background: transparent;
+}
+
+/* Placeholder Styling */
+.input-with-currency input::placeholder,
+.recur-input::placeholder,
+.mini-input::placeholder {
+    color: #ccc;
+    font-family: var(--font-serif);
+    text-align: right; /* Placeholder follows input alignment */
+    opacity: 1;
+}
+
+/* The Select Dropdown (Inside Right) */
+.mini-currency-select {
+    border: none;
+    background: #f9f9f9;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #555;
+    padding: 0 4px;
+    height: 100%;
+    min-height: 100%; /* Ensure full height */
+    cursor: pointer;
+    outline: none;
+    border-left: 1px solid #eee;
+    width: 45px;      /* Fixed width */
+    flex: 0 0 45px;   /* Prevent resizing */
+    text-align: center;
+    text-align-last: center;
+    -webkit-appearance: none;
+    appearance: none; 
+    border-radius: 0;
+}
+
+.mini-currency-select:hover {
+    background: #eee;
+    color: #000;
+}
+
+/* Hidden state */
+.mini-currency-select.hidden {
+    display: none;
+}
+
+/* --- Specific Adjustments --- */
+
+/* Timeline Quick Input specific */
+.quick-input .input-with-currency {
+    height: 36px;
+}
+
+/* Footer Editor specific overrides */
+.bottom-summary-bar.editing .input-with-currency {
+    height: 32px; /* Slightly smaller for footer */
+    max-width: 120px; /* Limit width on desktop */
+}
+
+/* Recurring Overlay specific overrides */
+.recur-input-group .input-with-currency {
+    height: 42px; /* Taller for modal */
+    border: 1px solid #ddd;
+}
+.recur-input.amount {
+    font-size: 1.2rem; /* Larger font for amount */
+    height: 100%;
+}
+
+/* Footer Editor Adaptation */
+.bottom-summary-bar.editing .mini-currency-select {
+    background: transparent;
+    border-left: 1px solid #ddd;
+}
+
+/* =========================================
+   [Critical Fixes] Layout & Currency UI
+   ========================================= */
+
+/* 1. 解決 Calendar Editor 按鈕被擠壓成橢圓形的問題 */
+.editor-inputs .btn-mini-add {
+    flex-shrink: 0 !important; /* 禁止縮小 */
+    width: 28px !important;
+    height: 28px !important;
+    margin-left: 4px;
+}
+
+/* 2. 調整 Footer Editor 輸入框寬度，容納幣別選單 */
+.bottom-summary-bar.editing .input-with-currency-footer {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    /* 限制最大寬度，避免擠壓到其他元件 */
+    max-width: 90px; 
+}
+
+.bottom-summary-bar.editing .mini-input:not(.note) {
+    width: 100% !important; /* 讓 input 填滿容器剩餘空間 */
+    min-width: 40px !important;
+}
+
+.bottom-summary-bar.editing .mini-currency-select {
+    width: 45px !important; /* 固定選單寬度 */
+    flex-shrink: 0;
+}
+
+/* 3. Recurring Overlay 樣式統一 */
+.recur-input-group .input-with-currency {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    width: 100%;
+}
+/* 讓 Recurring 的下拉選單好看一點 */
+.recur-input-group .mini-currency-select {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
+    padding: 0 8px;
+    cursor: pointer;
+    border-left: 1px solid #eee;
+}
+
+/* 4. Footer Badge 樣式優化 (黑底白字，可點擊感) */
+.currency-badge {
+    background: #000;
+    color: #fff;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.currency-badge:hover {
+    transform: scale(1.05);
+    background: #333;
+}
+
+/* 請加入至 style.css 底部 */
+
+/* 強制防止按鈕變形 */
+.editor-inputs .btn-mini-add {
+    flex: 0 0 28px !important; /* 固定寬度，不允許伸縮 */
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 50%;
+    margin-left: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 優化 Footer 內的輸入框群組 */
+.input-with-currency-footer {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    /* 限制最大寬度，避免把 + 按鈕擠出去 */
+    width: 100px; 
+    margin-right: 4px;
+}
+
+/* 讓輸入框佔據剩餘空間 */
+.input-with-currency-footer input.mini-input {
+    width: 100% !important;
+    border: none !important;
+    min-width: 0 !important; /* 允許縮小 */
+    padding: 4px !important;
+}
+
+/* 限制下拉選單寬度 */
+.input-with-currency-footer select.mini-currency-select {
+    width: 40px !important;
+    flex: 0 0 40px !important;
+    border-left: 1px solid #eee;
+    background: #f9f9f9;
+    padding: 0;
+    font-size: 0.7rem;
+}
+
+/* 編輯模式下的整體容器調整 */
+.bottom-summary-bar.editing .editor-inputs {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap; /* 禁止換行 */
+    overflow: hidden; /* 防止溢出 */
+    max-width: 100%;
+}
+
+/* =========================================
+   [Fix] Calendar Editor Layout Fixes
+   ========================================= */
+
+/* --- Desktop: Fix Missing + Button --- */
+@media (min-width: 701px) {
+    .bottom-summary-bar.editing .editor-inputs {
+        /* [關鍵] 改為靠右定位，確保 + 按鈕不會被切掉 */
+        left: auto !important; 
+        right: 80px !important; /* 預留空間給關閉按鈕(X) */
+        
+        width: auto !important;
+        min-width: 0 !important;
+        justify-content: flex-end !important;
+        overflow: visible !important; /* 防止按鈕被隱藏 */
+    }
+}
+
+/* =========================================
+   [Fix] Mobile Footer Layout (Robust ID-based)
+   ========================================= */
+
+@media (max-width: 700px) {
+    /* =========================================
+       [Fix] Mobile Footer Layout (Integrated Currency)
+       ========================================= */
+
+    /* 1. 容器設定 */
+    .bottom-summary-bar.editing .editor-inputs {
+        display: flex !important;
+        gap: 6px !important; /* 稍微拉開間距 */
+        width: 100% !important;
+        align-items: center !important;
+    }
+
+    /* 2. 賦予 "Wrapper" (Inc/Exp) 彈性權重 - 比例 1 */
+    .bottom-summary-bar.editing .input-with-currency {
+        flex: 1 1 0% !important; /* 權重 1 */
+        display: flex !important;
+        align-items: center !important;
+        width: auto !important;
+        max-width: none !important;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: visible !important; /* 確保選單可溢出 */
+    }
+
+    /* 3. 賦予 "Note" (沒有 Wrapper) 稍微大一點的權重 - 比例 1.2 */
+    #footerNote {
+        flex: 1.2 1 0% !important; /* 權重 1.2 */
+        width: 0 !important;       
+        min-width: 0 !important;
+    }
+
+    /* 4. Wrapper 內部的 Input：填滿剩餘空間 */
+    #footerInc, 
+    #footerExp {
+        flex: 1 !important;        /* 吃掉 Wrapper 內扣除選單後的空間 */
+        width: 0 !important;       /* 確保 flex 生效 */
+        min-width: 0 !important;
+        border: none !important;   /* 移除 input 自身邊框，改用 Wrapper 的 */
+        padding: 0 4px !important;
+        height: 100% !important;
+    }
+
+    /* 5. Wrapper 內部的 Select：固定極小寬度 */
+    .bottom-summary-bar.editing .mini-currency-select {
+        flex: 0 0 25px !important; /* 固定佔用 25px */
+        width: 25px !important;
+        border: none !important;
+        border-left: 1px solid #eee !important; /* 左側分隔線 */
+        padding: 0 !important;
+        background: transparent !important;
+        font-size: 0.6rem !important;
+        height: 100% !important;
+    }
+
+    /* 6. 新增按鈕 */
+    .bottom-summary-bar.editing .btn-mini-add {
+        flex: 0 0 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        margin-left: 0 !important;
+    }
+}
+
+/* =========================================
+   [CRITICAL FIX] Footer Editor Layout (Desktop Only)
+   Cleaned up: Removed conflicting mobile rules
+   ========================================= */
+
+/* 1. 全域修正: 確保 Wrapper 具有彈性 */
+.bottom-summary-bar.editing .input-with-currency {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+    max-width: none !important;
+}
+
+/* (已刪除重複的 @media max-width 700px 區塊) */
+
+/* 2. 電腦版補強 (Desktop Safety) - 保留這段 */
+@media (min-width: 701px) {
+    /* 確保 Wrapper 不會佔滿導致 Note 消失 */
+    .bottom-summary-bar.editing .input-with-currency {
+        flex: 0 0 150px !important; /* 固定寬度 */
+        margin-right: 4px;
+    }
+    
+    /* 確保 Note 欄位有足夠空間 */
+    .bottom-summary-bar.editing .mini-input.note {
+        flex: 1 !important;
+        min-width: 120px !important;
+        width: auto !important;
+    }
+}
+
+/* =========================================
+   [New] Multi-Currency UI Enhancements
+   ========================================= */
+
+/* 1. Windows Flag Emoji Fix */
+.flag-icon {
+    font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", sans-serif;
+    margin-right: 6px;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* 2. System Toast (Alert Replacement) */
+.system-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 3000;
+    opacity: 0;
+    
+    /* [修改] 預設不擋滑鼠，但允許過渡效果 */
+    pointer-events: none;
+    transition: all 0.3s ease;
+    margin-top: -20px;
+    
+    /* [新增] 顯示手型游標 */
+    cursor: pointer;
+}
+
+.system-toast.visible {
+    opacity: 1;
+    margin-top: 0;
+    
+    /* [新增] 顯示時允許點擊 */
+    pointer-events: auto; 
+}
+
+/* 3. Conversion Confirmation Overlay */
+.conv-card {
+    width: 90%;
+    max-width: 380px;
+    margin: auto;
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.conv-title {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: 1rem;
+    margin-bottom: 12px;
+}
+
+.conv-desc {
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.conv-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-convert {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-cancel-conv {
+    background: transparent;
+    color: #999;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.btn-cancel-conv:hover { color: #000; }
+
+/* New Style for Conversion Target Select */
+.conv-select {
+    width: 100%;
+    
+    /* [新增] 限制最大寬度與盒模型，防止超出容器 */
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 6px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+}
+.conv-select:focus {
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+
+/* Fix for Base Currency Select Overflow */
+#selBaseCurrency {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    
+    /* 讓過長的文字變成 "..."，防止撐開選單 */
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    
+    /* 確保在各種容器中都有正確的邊距 */
+    margin-top: 5px; 
+    display: block;
+}
+
+/* [Fix] Base Currency Select Overflow & Scrollbar Positioning */
+#selBaseCurrency {
+    /* 強制寬度不超過父容器 */
+    width: 100% !important;
+    max-width: 100% !important;
+    
+    /* 關鍵：讓 padding 計算在寬度內 */
+    box-sizing: border-box !important;
+    
+    /* 確保文字過長時顯示 ... 而不是撐開選單 */
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    
+    /* 確保右側保留空間給原生箭頭/捲軸，避免文字重疊 */
+    padding-right: 30px !important; 
+    
+    display: block !important;
+    cursor: pointer;
+}
+
+/* 針對 Active Currencies 列表也做一樣的保險措施 */
+.currency-grid {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* =========================================
+   [New] Custom Dropdown (Fixed Width & Scrollbar)
+   ========================================= */
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+    user-select: none;
+}
+
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px; /* 與其他輸入框一致 */
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    height: 42px; /* 固定高度 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    
+    /* [關鍵] 寬度鎖定為 100%，捲軸就會在內部 */
+    width: 100%; 
+    max-height: 200px;
+    overflow-y: auto; /* 捲軸顯示在 div 內 */
+    
+    background: #fff;
+    border: 1px solid #000;
+    border-top: none;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-sizing: border-box; /* 邊框算在寬度內 */
+    
+    /* 讓捲軸不要蓋住文字 */
+    padding-right: 0;
+}
+
+.custom-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+.custom-option:last-child {
+    border-bottom: none;
+}
+
+.custom-option:hover {
+    background: #f5f5f5;
+}
+
+.custom-option.selected {
+    background: #f0f0f0;
+    font-weight: 700;
+}
+
+/* =========================================
+   [Fix] Flag Icon Styles (Image Replacement)
+   ========================================= */
+.flag-img {
+    width: 16px;        /* 縮小寬度 */
+    height: 12px;       /* 縮小高度 (約等於文字高度) */
+    object-fit: cover;
+    border-radius: 2px;
+    margin-right: 6px;  /* 調整間距 */
+    display: inline-block;
+    
+    /* 微調垂直對齊，確保跟文字基線對齊 */
+    vertical-align: baseline; 
+    transform: translateY(1px); 
+    
+    box-shadow: 0 0 1px rgba(0,0,0,0.3);
+}
+
+/* =========================================
+   [New] Unified Currency Settings List
+   ========================================= */
+.unified-currency-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.uc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+}
+
+.uc-item:hover {
+    background: #f9f9f9;
+}
+
+.uc-item.is-base {
+    background: #f0f7ff;
+    border-color: #dbeafe;
+}
+
+.uc-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.uc-code {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.uc-action {
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Default Label */
+.badge-default {
+    background: #000;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: default;
+}
+
+/* =========================================
+   [Unified] Currency Action Buttons
+   ========================================= */
+
+/* 1. 定義共用結構 (確保大小完全一樣) */
+.badge-default,
+.btn-make-default {
+    /* 固定尺寸 */
+    width: 100px;          /* 設定固定寬度，容納 "SET DEFAULT" */
+    height: 32px;          /* 設定固定高度 */
+    
+    /* Flex 置中 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;            /* 移除內距，靠 Flex 置中 */
+    
+    /* 字體統一 */
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    
+    /* 邊框與圓角 */
+    border-radius: 4px;
+    border: 1px solid;     /* 預留邊框寬度 */
+    box-sizing: border-box;
+    transition: all 0.2s;
+}
+
+/* 2. 狀態：DEFAULT (目前預設) - 黑底白字 */
+.badge-default {
+    background: #000;
+    color: #fff;
+    border-color: #000;    /* 邊框同色 */
+    cursor: default;
+}
+
+/* 3. 狀態：SET DEFAULT (按鈕) - 白底灰字 -> 黑框 */
+.btn-make-default {
+    background: #fff;
+    color: #ccc;           /* 預設淺灰字 */
+    border-color: #eee;    /* 預設淺灰框 */
+    cursor: pointer;
+    opacity: 0;            /* 電腦版預設隱藏 */
+}
+
+/* Hover 效果：變深色 */
+.btn-make-default:hover {
+    color: #000;
+    border-color: #000;
+}
+
+/* 4. 顯示邏輯 */
+/* 滑鼠移過整行時顯示按鈕 */
+.uc-item:hover .btn-make-default {
+    opacity: 1;
+}
+
+/* 手機版：永遠顯示按鈕 (且邊框稍微明顯一點) */
+@media (max-width: 700px) {
+    .btn-make-default {
+        opacity: 1;
+        border-color: #ddd;
+        color: #999;
+    }
+}
+
+/* Placeholder for unchecked items to maintain row height */
+.btn-placeholder {
+    width: 100px;  /* 與 .btn-make-default 寬度一致 */
+    height: 32px;  /* 與 .btn-make-default 高度一致 */
+    pointer-events: none; /* 不阻擋點擊，點擊該區塊會觸發整行勾選 */
+}
+
+/* =========================================
+   [FINAL FIX] Overlay Close Buttons (Unified)
+   Targets: Repeat Rule & Flow Currency
+   ========================================= */
+
+/* 統一套用至兩個視窗的關閉按鈕 */
+#recurringOverlay #btnRecurClose,
+#flowSettingsOverlay #btnFlowSettingsClose {
+    /* 1. 定位：絕對置頂置右，完全貼齊 Header */
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+
+    /* 2. 尺寸：50px 正方形 (與 Header 等高) */
+    width: 50px !important;
+    height: 50px !important;
+
+    /* 3. 對齊：Flex 置中 */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    /* [視覺修正關鍵] 
+       1. padding-bottom: 18px (將 X 往上推)
+          這會吃掉下方空間，讓 X 視覺上與全大寫標題對齊。
+    */
+    padding: 0 0 18px 0 !important;
+    
+    /* [雙重保險] 額外向上位移 2px */
+    transform: translateY(-2px) !important;
+
+    /* 4. 外觀：透明背景、淺灰字、行高歸一 */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #9ca3af !important;
+    font-size: 1.5rem !important;
+    line-height: 1 !important;
+    
+    cursor: pointer;
+    z-index: 1000 !important;
+    border-radius: 0 !important;
+    border-top-right-radius: 12px !important;
+}
+
+/* Hover 狀態：只加深顏色 */
+#recurringOverlay #btnRecurClose:hover,
+#flowSettingsOverlay #btnFlowSettingsClose:hover {
+    color: #000 !important;
+    background: transparent !important;
+}
+
+/* Animation for Multi-Currency Panel */
+#multiCurrencyConfigPanel {
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    opacity: 1;
+    max-height: 500px; /* 足夠容納內容的高度 */
+    overflow: hidden;
+}
+
+#multiCurrencyConfigPanel.hidden {
+    display: block !important; /* 覆蓋全域 hidden，改用視覺隱藏以支援動畫 */
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+/* Animation for In-App Browser Arrow */
+@keyframes bounce {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(10px, -10px); }
+}
+
+/* =========================================
+   [Fix] Recurring Input Currency Width
+   ========================================= */
+
+/* 1. 加寬 Recurring 視窗內的幣別選單 */
+.recur-input-group .mini-currency-select {
+    width: 60px !important;       /* 加寬至 60px */
+    flex: 0 0 60px !important;    /* 固定寬度，不允許伸縮 */
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-size: 0.9rem !important; /* 字體大小 */
+}
+
+/* 2. 確保輸入框不會被壓縮 */
+.recur-input-group .input-with-currency input.recur-input.amount {
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding-right: 8px !important; /* 與選單保持距離 */
+}
+
+/* =========================================
+   [Fix] Recurring Custom Dropdown Styles
+   ========================================= */
+
+/* 讓 Custom Dropdown 完美嵌入 Input Group */
+#recurCurrencyWrapper {
+    height: 100%; /* 填滿高度 */
+    flex: 0 0 65px; /* 固定寬度 */
+    border-left: 1px solid #eee; /* 左側分隔線 */
+}
+
+/* 嵌入式 Trigger 的樣式覆蓋 */
+.custom-select-trigger.embedded {
+    border: none; /* 移除外框 (由 Wrapper 提供) */
+    background: #f9f9f9; /* 稍微灰底區隔 */
+    border-radius: 0; /* 移除圓角 */
+    height: 100%;
+    padding: 0 8px; /* 文字置中 */
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.custom-select-trigger.embedded:hover {
+    background: #eee;
+}
+
+/* 確保下拉選單寬度一致且不被切掉 */
+#recurCurrencyWrapper .custom-select-options {
+    width: 100%; /* 與上方寬度一致 */
+    border: 1px solid #000;
+    box-sizing: border-box;
+    left: -1px; /* 微調對齊邊框 */
+    text-align: center;
+}
+
+/* 選單選項樣式微調 */
+#recurCurrencyWrapper .custom-option {
+    padding: 10px 0; /* 上下加寬好點擊 */
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* =========================================
+   [Fix] Recurring Dropdown Visibility
+   Fixes: "No reaction" caused by parent overflow:hidden
+   ========================================= */
+.recur-input-group .input-with-currency {
+    overflow: visible !important; /* 允許選單超出邊界顯示 */
+    z-index: 20; /* 確保選單蓋在下方的 Note 輸入框上面 */
+}
+
+/* =========================================
+   [Global] Custom Dropdown Standardization
+   Targets: Timeline & Footer Editors
+   ========================================= */
+
+/* 1. 關鍵修正：允許選單超出容器顯示 */
+.input-with-currency,
+.input-with-currency-footer {
+    overflow: visible !important; 
+    position: relative;
+    z-index: auto; /* 避免層級鎖死 */
+}
+
+/* 讓作用中的輸入框層級提高，確保選單蓋在別人上面 */
+.input-with-currency:focus-within,
+.input-with-currency:hover {
+    z-index: 50; 
+}
+
+/* 2. 迷你版自定義選單 (用於 Timeline/Footer) */
+/* =========================================
+   [FINAL FIX] Mini Dropdown (Timeline & Footer)
+   Fixes: Font size, Direction, Width alignment
+   ========================================= */
+
+/* 1. 迷你選單容器 (固定 45px) */
+.custom-select-wrapper.mini {
+    width: 45px !important;
+    flex: 0 0 45px !important;
+    height: 100% !important;
+    border-left: 1px solid #eee !important;
+    background: #f9f9f9 !important;
+    position: relative !important; /* 確保下拉選單以此為基準定位 */
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* 2. 觸發按鈕 (Trigger) */
+.custom-select-wrapper.mini .custom-select-trigger {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0 !important;
+}
+
+/* 觸發按鈕內的文字 (強制縮小) */
+.custom-select-wrapper.mini .custom-select-trigger span {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    color: #555 !important;
+}
+
+/* 3. 下拉選單本體 (Options Container) */
+.custom-select-wrapper.mini .custom-select-options {
+    position: absolute !important;
+    left: -1px !important; /* 對齊左邊框 (抵消 border 寬度) */
+    
+    /* [關鍵] 寬度鎖死為 45px (加 2px 邊框補償) 或 100% */
+    width: calc(100% + 1px) !important; 
+    min-width: 100% !important;
+    
+    background: #fff !important;
+    border: 1px solid #000 !important;
+    box-sizing: border-box !important;
+    z-index: 1000 !important;
+    
+    /* 預設：向下展開 (Timeline) */
+    top: 100% !important;
+    bottom: auto !important;
+}
+
+/* 4. 選項項目 (Individual Options) - [關鍵修正] */
+/* 使用更強的選擇器，強制覆蓋全域 font-size: 1rem */
+.custom-select-wrapper.mini .custom-select-options .custom-option {
+    font-size: 0.7rem !important; /* 強制縮小字體 */
+    padding: 8px 0 !important;    /* 縮小內距 */
+    text-align: center !important;
+    font-weight: 700 !important;
+    color: #333 !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.custom-select-wrapper.mini .custom-option:hover {
+    background: #eee !important;
+}
+
+/* 5. Footer Editor 特殊模式 (向上彈出) */
+.bottom-summary-bar.editing .custom-select-wrapper.mini {
+    background: transparent !important;
+    border-left: 1px solid #ddd !important;
+}
+
+/* [關鍵] 強制向上定位 */
+.bottom-summary-bar.editing .custom-select-wrapper.mini .custom-select-options {
+    top: auto !important;    /* 取消向下 */
+    bottom: 100% !important; /* 底部貼齊容器頂部 */
+    
+    margin-bottom: 0px !important; 
+    border-bottom: none !important; /* 接合處無邊框 */
+    border-top: 1px solid #000 !important;
+}
+
+/* =========================================
+   [FINAL FIX] Footer Overflow Visibility
+   Fixes: Upward dropdown getting clipped on Mobile/Desktop
+   ========================================= */
+
+/* 1. 解除容器的溢出隱藏，讓選單可以凸出去 */
+.bottom-summary-bar.editing,
+.bottom-summary-bar.editing .equation-wrapper,
+.bottom-summary-bar.editing .footer-day-editor,
+.bottom-summary-bar.editing .editor-body,
+.bottom-summary-bar.editing .editor-inputs {
+    overflow: visible !important; 
+}
+
+/* 2. 確保選單層級最高，蓋過 Calendar Grid */
+.bottom-summary-bar.editing .custom-select-wrapper.mini .custom-select-options {
+    z-index: 9999 !important;
+}
+
+/* 3. 修正手機版 Note 欄位可能擋住選單的問題 */
+.bottom-summary-bar.editing .input-with-currency {
+    z-index: auto; /* 預設層級 */
+}
+
+/* 當輸入框或選單被操作時，層級拉高 */
+.bottom-summary-bar.editing .input-with-currency:hover,
+.bottom-summary-bar.editing .input-with-currency:focus-within {
+    z-index: 100 !important;
+    position: relative;
+}
+
+/* =========================================
+   [Fix] Restore Note Input Border (Desktop)
+   Fixes: Note input invisible due to global border:none
+   ========================================= */
+.bottom-summary-bar.editing #footerNote {
+    border: 1px solid #ddd !important; /* 強制恢復邊框 */
+    background: #fff !important;       /* 確保背景為白色 */
+    border-radius: 4px !important;
+    padding: 4px 8px !important;       /* 確保內距舒適 */
+    
+    /* 確保高度與其他輸入框一致 */
+    height: 32px !important; 
+    box-sizing: border-box !important;
+}
+
+/* 當輸入時，邊框變深色 */
+.bottom-summary-bar.editing #footerNote:focus {
+    border-color: #000 !important;
+}
+
+/* =========================================
+   [Fix] Fixed Width for Footer Equation (Tighter)
+   防止金額變動時造成版面跳動，並稍微縮窄間距
+   ========================================= */
+
+/* 1. 設定容器固定寬度並置中 */
+.eq-item {
+    /* 電腦版寬度：縮窄至 85px (原 100px) */
+    width: 85px; 
+    
+    /* 強制內容置中 */
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    
+    /* 防止被壓縮 */
+    flex-shrink: 0; 
+}
+
+/* 2. 手機版調整 */
+@media (max-width: 700px) {
+    .eq-item {
+        /* 手機版寬度：縮窄至 55px (原 65px) */
+        width: 55px !important; 
+    }
+}
+
+/* =========================================
+   [Fix 1] Calendar Chip Gradient (Hard Stop)
+   解決問題：移除紅綠雙色中間的漸層，改為實線分割
+   ========================================= */
+
+/* 請搜尋 .m-chip.s-inc-exp::before, .m-chip.s-tri::before 並替換為以下內容 */
+.m-chip.s-inc-exp::before,
+.m-chip.s-tri::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -1px;
+    bottom: -1px;
+    width: 3px; 
+    
+    /* [修改] 改為 50% / 50% 硬切，移除中間的 #e5e7eb 過渡色 */
+    background: linear-gradient(
+        to bottom, 
+        var(--income-color) 0%, 
+        var(--income-color) 50%,     /* 綠色結束點 */
+        var(--expense-color) 50%,    /* 紅色起始點 (無縫接軌) */
+        var(--expense-color) 100%
+    );
+    
+    z-index: 1; 
+}
+
+/* =========================================
+   [Fix 2] Calendar Tiny Currency Tag
+   解決問題：在有限空間內顯示幣別，使用極小字體與緊湊間距
+   ========================================= */
+
+/* 請將此段落新增至 style.css 底部 */
+.cal-currency-tag {
+    font-size: 0.65em !important; /* 極小字體 */
+    font-weight: 700;
+    opacity: 0.7;
+    margin-left: 1px;             /* 極窄間距 */
+    vertical-align: baseline;
+    display: inline-block;
+    line-height: 1;
+    font-family: var(--font-sans);
+    letter-spacing: -0.02em;      /* 字元緊縮 */
+}
+
+/* 針對日曆晶片稍微縮減內距，騰出空間給幣別 */
+.m-chip {
+    padding-right: 4px !important; /* 原本可能是 8px，縮小一點 */
+}
+
+/* =========================================
+   [Fix] Date Picker Styles & Single Mode
+   ========================================= */
+
+/* 1. 恢復左下角日期顯示的字體 (改回 Serif 襯線體) */
+.selected-range-text,
+.p-date {
+    font-family: var(--font-serif) !important;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #000;
+}
+
+/* =========================================
+   [Fix] Transaction List Currency Tag
+   修復交易列表 (Timeline) 幣別不顯示的問題
+   ========================================= */
+
+/* 1. 幣別標籤樣式 */
+.tx-currency-tag {
+    font-size: 0.65em;       /* 字體縮小 */
+    font-weight: 700;
+    color: #9ca3af;          /* 淺灰色 */
+    margin-left: 4px;        /* 與數字保持距離 */
+    vertical-align: middle;
+    display: inline-block;
+    background: #f3f4f6;     /* 淡淡的灰色背景，增加可視度 */
+    padding: 1px 4px;
+    border-radius: 4px;
+    line-height: 1.2;
+}
+
+/* 2. 確保列表欄位支援 flex 排列 (讓標籤跟在數字後面) */
+.d-col.income, 
+.d-col.expense {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important; /* 靠右對齊 */
+    white-space: nowrap !important;       /* 防止換行 */
+    gap: 2px;
+}
+
+/* =========================================
+   [Fix] Filter List Alignment
+   讓搜尋清單的金額與幣別標籤能正確對齊
+   ========================================= */
+
+/* 1. 讓金額欄位變成 Flex 容器，並靠右對齊 */
+.f-amt {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important; /* 靠右對齊 */
+    white-space: nowrap !important;
+    gap: 4px; /* 數字與標籤的間距 */
+}
+
+/* 2. 確保在手機版也能正確顯示 */
+@media (max-width: 700px) {
+    .f-amt {
+        font-size: 0.9rem !important;
+    }
+}
+
+/* =========================================
+   [New] Flow Settings UI Enhancements
+   ========================================= */
+
+/* 設定面板底部的按鈕區域 */
+.settings-footer-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* 確認套用按鈕 */
+.btn-apply-settings {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-apply-settings:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
+
+/* 讓 Set Default 按鈕在設定模式下總是可見且明顯 */
+.uc-item .btn-make-default.force-visible {
+    opacity: 1 !important;
+    border-color: #000;
+    color: #000;
+    background: #fff;
+}
+
+/* 選中作為 Pending Default 的樣式 */
+.uc-item.pending-base {
+    background: #fffbeb; /* 淡淡的黃色，代表待定 */
+    border: 1px solid #fcd34d;
+}
+
+.uc-item.pending-base .badge-default {
+    background: #f59e0b; /* 橘黃色 Badge */
+    color: #fff;
+    border-color: #f59e0b;
+}
+
+/* =========================================
+   [Fix] Settings Panel & Pending Style
+   ========================================= */
+
+/* 1. 修正面板高度與滾動，確保按鈕不會被切掉 */
+#multiCurrencyConfigPanel {
+    /* 移除 max-height 限制，讓它根據內容自然撐開，或設得夠大 */
+    max-height: none !important; 
+    overflow: visible !important; /* 允許按鈕區域顯示 */
+    transition: opacity 0.3s ease;
+}
+
+#multiCurrencyConfigPanel.hidden {
+    display: none !important;
+}
+
+/* 2. 待確認 (Pending) 的項目樣式 - 改為現代黑白風格 */
+.uc-item.pending-base {
+    background: #fff;
+    /* 改用 2px 粗黑框，強調選取狀態，但不使用突兀的黃色 */
+    border: 2px solid #000 !important; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* 微微浮起 */
+    z-index: 2; /* 確保浮在其他項目之上 */
+}
+
+/* 待確認時的 Badge 樣式 - 維持黑色，與整體一致 */
+.uc-item.pending-base .badge-default {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+/* 3. 確認按鈕區域優化 */
+.settings-footer-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    padding-bottom: 10px; /* 底部留白 */
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    background: #fff; /* 確保背景不透明 */
+}
+
+/* 確認按鈕本體 */
+.btn-apply-settings {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    width: 100%; /* 手機版全寬更好按 */
+}
+
+.btn-apply-settings:hover {
+    background: #333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+@media (min-width: 700px) {
+    .btn-apply-settings {
+        width: auto; /* 電腦版維持適當寬度 */
+    }
+}
+
+/* =========================================
+   [Fix] Settings Panel & Black/White Style
+   ========================================= */
+
+/* 1. 確保面板可以正確顯示內容 */
+#multiCurrencyConfigPanel {
+    max-height: none !important; /* 移除高度限制，讓內容撐開 */
+    overflow: visible !important;
+}
+
+/* 2. 待確認項目 (Pending) - 改為黑白現代風格 */
+.uc-item.pending-base {
+    background: #fff;
+    /* 改為 2px 粗黑框，取代原本的黃色 */
+    border: 2px solid #000 !important; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    z-index: 2;
+    position: relative; /* 確保浮起 */
+}
+
+/* 待確認時的 Badge - 純黑底白字 */
+.uc-item.pending-base .badge-default {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+/* 3. 確認按鈕樣式 */
+.settings-footer-actions {
+    width: 100%;
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-apply-settings {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 14px 0; /* 加大高度 */
+    width: 100%;     /* 滿版寬度，更像 App 操作 */
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.btn-apply-settings:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
+
+/* 4. 確保列表容器高度足夠且可滾動 */
+.unified-currency-list {
+    max-height: 50vh !important; /* 限制最大高度為螢幕一半 */
+    overflow-y: auto !important;
+    padding-bottom: 20px !important; /* 底部留白給按鈕 */
+}
+
+/* =========================================
+   [UX Upgrade] 1. 統一底部確認按鍵風格
+   Target: Multi-Currency, Recurring, Sync
+   Style: Based on "Unsaved Flows" (Solid, Clean)
+   ========================================= */
+
+/* 定義統一的按鈕樣式類別 */
+.btn-action-unified,
+#btnRecurConfirm,         /* Recurring Save */
+#btnSyncConfirm,          /* Sync Save */
+.btn-apply-settings {     /* Multi-Currency Confirm */
+    background: #000;
+    color: #fff;
+    border: none;
+    
+    /* 尺寸設定 */
+    width: 100%;
+    padding: 10px 0;      /* 適中的高度，不過大 */
+    margin-top: 0;        /* 移除預設邊距，由容器控制 */
+    
+    /* 字體設定 */
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    
+    /* 形狀設定：微圓角 (4px) 比較現代，若想要完全直角可改為 0px */
+    border-radius: 0px; 
+    
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: none;     /* 移除陰影保持扁平 */
+}
+
+.btn-action-unified:hover,
+#btnRecurConfirm:hover,
+#btnSyncConfirm:hover,
+.btn-apply-settings:hover {
+    background: #333;
+    transform: none; /* 移除位移效果，保持穩重 */
+}
+
+/* 針對 Unsaved Flows 視窗微調 (確保一致性) */
+#btnSyncConfirm {
+    margin-top: 20px !important; /* 這個視窗需要一點上方留白 */
+}
+
+
+/* =========================================
+   [UX Upgrade] 2. Multi-Currency Panel Layout
+   目標：按鈕固定底部 (Frozen Footer)，列表獨立滾動
+   ========================================= */
+
+/* 面板改為 Flex 垂直佈局 */
+#multiCurrencyConfigPanel {
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* 設定固定高度，讓內部可以滾動 */
+    height: 450px !important; 
+    max-height: 50vh !important;
+    
+    overflow: hidden !important; /* 隱藏外層滾動條 */
+    margin-top: 10px;
+}
+
+/* 讓幣別列表填滿剩餘空間，並獨立滾動 */
+.unified-currency-list {
+    flex: 1 !important;        /* 佔據中間所有空間 */
+    overflow-y: auto !important; /* 允許內部滾動 */
+    min-height: 0 !important;  /* Flexbox 滾動修復關鍵 */
+    
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 5px;
+    margin-bottom: 10px; /* 與底部按鈕的距離 */
+}
+
+/* 底部按鈕區域：固定不滾動 */
+.settings-footer-actions {
+    flex: 0 0 auto !important; /* 高度由內容決定，不伸縮 */
+    width: 100%;
+    padding-top: 5px;
+    background: #fff;
+    margin-top: 0 !important; /* 由 Flex gap 控制 */
+}
+
+
+/* =========================================
+   [UX Upgrade] 3. Refined Selection Border
+   目標：選取時不推擠內容，線條變細
+   ========================================= */
+
+/* 基礎項目樣式 (確保有透明邊框佔位) */
+.uc-item {
+    border: 1px solid transparent !important; /* 預留 1px 空間 */
+    transition: background 0.1s, border-color 0.1s;
+}
+
+/* 待確認 (Pending) 樣式 - 改良版 */
+.uc-item.pending-base {
+    background: #fff;
+    
+    /* [關鍵] 改用 border-color 變色，維持 1px，解決變粗與推擠問題 */
+    border-color: #000 !important; 
+    
+    /* 如果想要更明顯但不佔空間，可以用 box-shadow */
+    /* box-shadow: 0 0 0 1px #000; */ /* 選用 */
+    
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 輕微浮起感 */
+}
+
+/* 確保 Badge 也是純黑風格 */
+.uc-item.pending-base .badge-default {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+/* =========================================
+   [UX Fix] 1. 統一按鈕風格：直角、降低高度
+   Target: Multi-Currency, Recurring Save, Sync Save
+   ========================================= */
+
+#btnRecurConfirm,         /* Recurring Save Rule */
+#btnSyncConfirm,          /* Sync Unsaved Flows */
+.btn-apply-settings {     /* Multi-Currency Confirm */
+    
+    /* [修改] 形狀：完全直角 */
+    border-radius: 0 !important; 
+    
+    /* [修改] 高度：統一降低為 40px (原 48px+) */
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important; /* 移除內距，靠 Flex 置中 */
+    
+    /* 佈局：確保文字垂直置中 */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* 其他樣式維持 */
+    background: #000;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: none;
+    margin-top: 0 !important;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+#btnRecurConfirm:hover,
+#btnSyncConfirm:hover,
+.btn-apply-settings:hover {
+    background: #333;
+}
+
+/* 針對 Sync 視窗按鈕的特殊微調 (確保上方有間距) */
+#btnSyncConfirm {
+    margin-top: 15px !important; 
+}
+
+
+/* =========================================
+   [UX Fix] 2. 多幣種面板：空間極大化與置底按鈕
+   目標：讓列表佔滿中間剩餘空間，按鈕固定在視窗最底
+   ========================================= */
+
+/* A. 調整外層 Card Body：改為 Flex Column 讓內部元素可以長高 */
+#flowSettingsOverlay .recur-form-body {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 400px; /* 確保有最小高度 */
+    max-height: 85vh;  /* 限制最大高度 */
+    padding-bottom: 0 !important; /* 底部不留白，讓按鈕貼底 */
+}
+
+/* B. 設定面板容器：強制填滿剩餘空間 */
+#multiCurrencyConfigPanel {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;        /* [關鍵] 自動填滿剩餘高度 */
+    height: auto !important;   /* 覆蓋之前的固定高度 */
+    max-height: none !important;
+    margin-top: 10px;
+    overflow: hidden !important;
+}
+
+/* C. 幣別列表：填滿中間區域，獨立滾動 */
+.unified-currency-list {
+    flex: 1 !important;        /* [關鍵] 佔據所有可用空間 */
+    overflow-y: auto !important;
+    height: auto !important;
+    max-height: none !important; /* 移除高度限制 */
+    
+    border: 1px solid #eee;
+    border-bottom: none;       /* 底部與按鈕接合，移除邊框視覺 */
+    border-radius: 4px 4px 0 0; /* 下方直角 */
+    padding: 10px;
+    margin-bottom: 0 !important; /* 緊貼底部按鈕 */
+}
+
+/* D. 底部按鈕區：固定在最底 */
+.settings-footer-actions {
+    flex: 0 0 auto !important; /* 高度固定 */
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-top: none !important;
+}
+
+/* 特殊處理：讓確認按鈕看起來像是「黏」在列表底部 */
+.settings-footer-actions .btn-apply-settings {
+    margin: 0 !important;
+}
+
+/* =========================================
+   [Fix] Currency Selection UI
+   解決：外框太粗 + 點擊後內容位移 (Zero Layout Shift)
+   ========================================= */
+
+/* 1. 基礎項目：預留 1px 透明邊框 (關鍵修正) */
+.uc-item {
+    /* 平時就有 1px 邊框，只是透明的，這樣選中時就不會因為增加了邊框厚度而推擠內容 */
+    border: 1px solid transparent !important; 
+    box-sizing: border-box !important; 
+    transition: background 0.1s, border-color 0.1s;
+}
+
+/* 2. 待確認 (Pending) 樣式：1px 細黑框 */
+.uc-item.pending-base {
+    background: #fff;
+    
+    /* [修改] 只改變顏色，寬度維持 1px (解決外框太粗) */
+    border-color: #000 !important; 
+    border-width: 1px !important; 
+    
+    /* 加入輕微陰影增加層次感 (選用) */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08); 
+    z-index: 2;
+}
+
+/* 3. 確保 Badge 不會因為高度變化而跑版 */
+.uc-item .badge-default,
+.uc-item .btn-make-default {
+    margin-right: 0; /* 確保右側對齊 */
+}
+
+/* =========================================
+   [UX Fix] 2. 多幣種面板：動態高度控制 (置中 vs 置底)
+   ========================================= */
+
+/* 1. 修正 Overlay 容器：確保內容垂直置中 */
+#flowSettingsOverlay {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* 2. 預設狀態 (Compact/Collapsed)：適用於關閉多幣種時 */
+/* 讓卡片高度根據內容自動調整，並恢復 padding */
+#flowSettingsOverlay .recur-card-layout {
+    height: auto !important;
+    min-height: 0 !important;
+    transition: height 0.3s ease; /* 高度變化要有動畫 */
+}
+
+#flowSettingsOverlay .recur-form-body {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+    padding-bottom: 20px !important; /* 恢復底部留白 */
+    display: block !important;
+}
+
+/* 3. 展開狀態 (Expanded)：適用於開啟多幣種時 */
+/* 只有在加上 .expanded class 時，才強制撐開高度並置底按鈕 */
+#flowSettingsOverlay.expanded .recur-card-layout {
+    height: 85vh !important; /* 展開時佔據大部分畫面 */
+}
+
+#flowSettingsOverlay.expanded .recur-form-body {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 400px !important; /* 確保有最小高度 */
+    padding-bottom: 0 !important;  /* 底部不留白，給按鈕貼底 */
+}
+
+/* 4. 面板容器設定 (維持不變，確保填滿) */
+#multiCurrencyConfigPanel {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin-top: 10px;
+    overflow: hidden !important;
+}
+
+/* 5. 幣別列表設定 (維持不變) */
+.unified-currency-list {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    border: 1px solid #eee;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 10px;
+    margin-bottom: 0 !important;
+}
+
+/* 6. 底部按鈕區 (維持不變) */
+.settings-footer-actions {
+    flex: 0 0 auto !important;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-top: none !important;
+}
+
+.settings-footer-actions .btn-apply-settings {
+    margin: 0 !important;
+}
+
+/* =========================================
+   [Final Layout Fix] Flow Currency Overlay
+   解決：按鈕被擠壓遮擋、列表滾動、未開啟時置中
+   ========================================= */
+
+/* 1. Overlay 容器：負責垂直置中 */
+#flowSettingsOverlay {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important; /* 避免貼邊 */
+}
+
+/* 2. 卡片本體 (Card Layout) */
+#flowSettingsOverlay .recur-card-layout {
+    width: 100% !important;
+    max-width: 420px !important;
+    background: #fff;
+    border-radius: 12px;
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* [預設狀態] 高度自動，緊湊置中 */
+    height: auto !important;
+    max-height: 90vh !important; /* 防止超出螢幕 */
+    transition: height 0.3s ease;
+    overflow: hidden !important; /* 關鍵：防止內部元素撐破圓角 */
+}
+
+/* 3. [展開狀態] 當加上 .expanded 時，強制拉高高度 */
+#flowSettingsOverlay.expanded .recur-card-layout {
+    height: 80vh !important; /* 固定高度，讓內部可以計算剩餘空間 */
+}
+
+/* 4. 內容區域 (Body) */
+#flowSettingsOverlay .recur-form-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important; /* 禁止 Body 本身滾動 */
+    padding: 20px 25px 0 25px !important; /* 底部 padding 歸零，交給按鈕區處理 */
+    height: 100% !important;
+}
+
+/* 5. 多幣種面板容器 (關鍵修正) */
+#multiCurrencyConfigPanel {
+    /* 讓它填滿 Body 剩下的所有空間 */
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* [魔法屬性] 允許 Flex 子元素滾動的關鍵，沒有這行列表會無限撐開 */
+    min-height: 0 !important; 
+    
+    margin-top: 15px !important;
+    overflow: hidden !important;
+}
+
+/* 6. 幣別列表 (List) */
+.unified-currency-list {
+    /* 佔據所有可用空間 */
+    flex: 1 !important;
+    
+    /* 允許內部滾動 */
+    overflow-y: auto !important;
+    
+    /* 視覺調整 */
+    border: 1px solid #eee;
+    border-bottom: none; /* 與下方按鈕無縫接合 */
+    border-radius: 4px 4px 0 0;
+    padding: 5px;
+    margin-bottom: 0 !important;
+}
+
+/* 7. 底部按鈕區域 (Footer Action) */
+.settings-footer-actions {
+    /* 固定高度，不允許縮放 */
+    flex: 0 0 auto !important;
+    width: 100%;
+    margin: 0 !important;
+    
+    /* 確保按鈕有足夠的點擊空間與留白 */
+    padding: 0 !important; 
+    padding-bottom: 20px !important; /* [修正] 底部留白，讓按鈕不要貼底被切掉 */
+    
+    background: #fff; /* 確保不透明，遮住列表 */
+    z-index: 10;
+}
+
+/* 按鈕本體 */
+.settings-footer-actions .btn-apply-settings {
+    margin: 0 !important;
+    width: 100% !important;
+    border-radius: 0 0 4px 4px !important; /* 下方圓角 */
+}
+
+/* =========================================
+   [Final Layout Fix] Flow Currency Overlay (Maximized)
+   解決：中間列表空間太小、按鈕不夠置底
+   ========================================= */
+
+/* 1. Overlay 容器 */
+#flowSettingsOverlay {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px !important; /* 縮小邊距，讓卡片可以更大 */
+}
+
+/* 2. 卡片本體 (Card Layout) */
+#flowSettingsOverlay .recur-card-layout {
+    width: 100% !important;
+    max-width: 420px !important;
+    background: #fff;
+    border-radius: 12px;
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* 預設狀態 (未開啟)：高度自動 */
+    height: auto !important;
+    max-height: 90vh !important;
+    transition: height 0.3s ease;
+    overflow: hidden !important;
+}
+
+/* 3. [展開狀態]：拉高高度至 85vh，確保有足夠空間顯示列表 */
+#flowSettingsOverlay.expanded .recur-card-layout {
+    height: 85vh !important; 
+}
+
+/* 4. 內容區域 (Body) */
+#flowSettingsOverlay .recur-form-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    
+    /* [關鍵修正] 底部 padding 設為 0，讓 Footer 可以貼底 */
+    padding: 20px 20px 0 20px !important; 
+    
+    height: 100% !important;
+}
+
+/* 5. 多幣種面板容器 */
+#multiCurrencyConfigPanel {
+    flex: 1 !important;        /* 填滿剩餘所有空間 */
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;  /* 允許滾動 */
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 6. 幣別列表 (List) */
+.unified-currency-list {
+    flex: 1 !important;        /* 盡可能延伸高度 */
+    overflow-y: auto !important;
+    
+    border: 1px solid #eee;
+    border-bottom: none;       /* 與按鈕無縫接合 */
+    border-radius: 4px 4px 0 0; /* 上方圓角，下方直角 */
+    padding: 5px;
+    margin-bottom: 0 !important;
+}
+
+/* 7. 底部按鈕區域 (Footer) - [關鍵修正] */
+.settings-footer-actions {
+    flex: 0 0 auto !important; /* 固定高度 */
+    width: 100%;
+    margin: 0 !important;
+    
+    /* [關鍵] 移除所有 padding，讓按鈕直接貼齊視窗底部 */
+    padding: 0 !important; 
+    
+    background: #fff;
+    z-index: 10;
+}
+
+/* 按鈕本體 */
+.settings-footer-actions .btn-apply-settings {
+    margin: 0 !important;
+    width: 100% !important;
+    
+    /* 配合卡片底部形狀 */
+    border-radius: 0 0 0 0 !important; /* 直角，或是配合設計 */
+    
+    /* 確保高度適中，不會太佔空間 */
+    height: 30px !important; 
+}
+
+/* 手機版微調：如果底部有 Home Bar，稍微留一點點安全距離，避免無法點擊 */
+@media (max-width: 700px) {
+    #flowSettingsOverlay.expanded .recur-card-layout {
+        height: 90vh !important; /* 手機版再拉高一點，利用率更高 */
+    }
+}
+
+/* =========================================
+   [Visual Polish] Tighten Flow Currency Header
+   目標：減少多幣種開關與分隔線周圍的空白
+   ========================================= */
+
+/* 1. 減少內容區域的頂部內距 (原本是 20px) */
+#flowSettingsOverlay .recur-form-body {
+    padding-top: 15px !important;
+}
+
+/* 2. 減少開關 (Switch) 下方的邊距 */
+#flowSettingsOverlay .setting-row {
+    margin-bottom: 5px !important; /* 縮小與分隔線的距離 */
+}
+
+/* 3. 移除面板容器的頂部邊距 */
+#multiCurrencyConfigPanel {
+    margin-top: 0 !important;
+}
+
+/* 4. [關鍵] 縮小分隔線 (Divider) 的上下邊距 */
+/* 原本 HTML 行內樣式是 margin: 15px 0 20px 0，這裡強制覆寫 */
+#multiCurrencyConfigPanel > div:first-child {
+    margin: 10px 0 10px 0 !important; 
+}
+
+/* 5. 減少說明文字 (Description) 下方的邊距 */
+#multiCurrencyConfigPanel > p {
+    margin-bottom: 10px !important;
+    font-size: 0.75rem !important; /* 字體稍微縮小一點點，讓視覺更平衡 */
+}
+
+@media (max-width: 700px) {
+    /* ... 既有的其他設定 ... */
+
+    /* [Fix] Sync Item Layout for Mobile */
+    .sync-item {
+        display: flex !important;           /* 強制 Flex 佈局 */
+        align-items: center !important;     /* 垂直置中 */
+        justify-content: space-between !important; /* 文字靠左，按鈕靠右 */
+        width: 100%;
+        padding: 10px 0;
+        border-bottom: 1px solid #f9f9f9;
+    }
+
+    /* 確保資訊區塊不會太寬 */
+    .sync-info {
+        flex: 1; /* 佔據剩餘空間 */
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0; /* 防止文字溢出 */
+    }
+
+    /* 刪除按鈕樣式微調 */
+    .btn-sync-delete {
+        flex: 0 0 auto; /* 固定寬度 */
+        margin-left: 10px;
+        background: #fff5f5;
+        border-radius: 4px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #dc2626;
+    }
+}
+
+/* =========================================
+   [Fix] Unsaved Flows List Styles (Global)
+   ========================================= */
+
+.sync-list-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    border-top: 1px solid #f5f5f5;
+}
+
+.sync-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 15px 0;
+    border-bottom: 1px solid #f5f5f5;
+    width: 100%;
+}
+
+.sync-item:last-child {
+    border-bottom: none;
+}
+
+.sync-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left; /* 確保文字靠左 */
+}
+
+.sync-name {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 1rem;
+    color: #000;
+}
+
+.sync-count {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.btn-sync-delete {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    color: #ccc; /* 預設淺灰 */
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.btn-sync-delete:hover {
+    background: #fff5f5;
+    color: #dc2626; /* Hover 時變紅 */
+}
+
+.icon-trash {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* 修改 picker-header 佈局，讓導航置中 */
+.picker-header {
+    justify-content: center !important; /* 內容置中 */
+    position: relative;
+}
+
+/* 導航控制區塊 */
+.picker-nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 讓月份標題看起來可點擊 */
+.picker-months-label.clickable {
+    cursor: pointer;
+    transition: opacity 0.2s;
+    user-select: none;
+    /* 增加點擊範圍與視覺提示 */
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.picker-months-label.clickable:hover {
+    background: #f5f5f5;
+    color: #000;
+}
+
+/* 確保 Picker 內的 Dropdown 顯示在最上層 */
+#pickerDateDropdown {
+    z-index: 1000;
+    /* 確保寬度與主畫面一致 */
+    width: 240px;
+    /* 陰影加深一點區隔層級 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* [Fix] 讓 Picker 內部的下拉選單年份數字套用 Serif 字體 */
+#pdYearDisplay {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+    color: #000;
+}
+
+/* [Fix] 確保 Footer 佈局維持「左文字、右按鈕」的優良傳統 */
+.picker-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important; /* 關鍵：左右推開 */
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+/* 確保選擇範圍文字靠左，且字體正確 */
+.selected-range-text {
+    text-align: left;
+    flex: 1; /* 佔據左側空間 */
+}
+
+/* =========================================
+   [HOTFIX] Final UI Layout Corrections
+   ========================================= */
+
+/* --- 1. 修正 Date Picker 下方佈局 (解決文字被擠壓問題) --- */
+.picker-footer {
+    display: flex !important;
+    flex-direction: row !important; /* 強制橫向排列 */
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 20px;
+    padding-top: 20px;
+    margin-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+/* 左側日期文字：禁止換行、套用 Serif 字體 */
+.selected-range-text {
+    flex: 1; /* 佔據左側剩餘空間 */
+    white-space: nowrap !important; /* [關鍵] 禁止文字換行 */
+    text-align: left;
+    font-family: var(--font-serif) !important; /* 套用主題字體 */
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #000;
+}
+
+/* 右側 APPLY 按鈕：解除 100% 寬度限制 */
+#btnApplyRange {
+    width: auto !important; /* [關鍵] 從 100% 改回自動寬度 */
+    padding: 10px 30px !important;
+    flex: 0 0 auto; /* 禁止被壓縮 */
+    margin: 0 !important;
+}
+
+
+/* --- 2. 修正 Date Picker 上方標題字體 --- */
+/* 年月標題 (例如 2025 / 12) */
+#pickerMonthsLabel {
+    font-family: var(--font-serif) !important;
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: 0.05em;
+}
+
+/* 下拉選單內的年份數字 */
+#pdYearDisplay {
+    font-family: var(--font-serif) !important;
+}
+
+
+/* --- 3. 修正 Unsaved Flows 列表 (解決垂直堆疊與框線問題) --- */
+.sync-item {
+    display: flex !important;
+    flex-direction: row !important; /* 強制橫向排列 */
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    padding: 15px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+/* 確保左側資訊區塊正確縮放 */
+.sync-info {
+    flex: 1;
+    text-align: left;
+}
+
+/* 移除垃圾桶按鈕的邊框與背景 */
+.btn-sync-delete {
+    border: none !important;      /* 移除截圖中的方框 */
+    background: transparent !important;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: none !important;
+}
+
+.btn-sync-delete:hover {
+    background: #fff5f5 !important;
+    color: #dc2626 !important;
 }

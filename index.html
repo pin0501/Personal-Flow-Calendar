@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script>
         // [CONFIG] 全域版本號控制
-        const APP_VERSION = '1.1.2';
+        window.APP_VERSION = '1.2.4';
     </script>
     <title>Personal Flow Calendar</title>
 
@@ -22,6 +22,19 @@
 </head>
 
 <body>
+    <div id="inAppBrowserOverlay" class="overlay hidden" style="z-index: 9999; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px;">
+        <div style="position: absolute; top: 20px; right: 20px; font-size: 3rem; animation: bounce 1s infinite;">
+            ↗
+        </div>
+        <h2 class="clean-font" style="color: #fff; font-size: 1.5rem; margin-bottom: 20px;">ACCESS BLOCKED</h2>
+        <p style="font-family: sans-serif; line-height: 1.6; font-size: 1rem; max-width: 300px; color: #ccc;">
+            Google Login is not supported in this app's browser.
+            <br><br>
+            Please tap the <b>Menu icon</b> (top right or bottom) and select:
+            <br>
+            <b style="color: #fff; border-bottom: 1px solid #fff; display: inline-block; margin-top: 10px;">Open in Browser</b>
+        </p>
+    </div>
     <div class="app-container">
         <nav class="top-navigation">
             <div class="nav-layer-month">
@@ -81,6 +94,14 @@
                             </span>
 
                             <span class="dropdown-arrow" id="flowDropdownArrow">▾</span>
+                            
+                            <div id="btnFlowSettings" class="btn-nav-icon" title="Flow Currency" style="margin-left: 8px; border:none; padding: 4px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+
                         </div>
                         
                         <div id="flowDropdown" class="flow-dropdown hidden">
@@ -152,10 +173,15 @@
 
             <div class="equation-wrapper" id="footerEquationWrapper">
                 <div id="forecastContainer">
-                    <div class="summary-label" id="summaryLabel">TOTAL FORECAST</div>
+                    <div class="summary-label-group" style="display:flex; align-items:center; gap:6px; justify-content:center; margin-bottom: 4px;">
+                        <div class="summary-label" id="summaryLabel">TOTAL FORECAST</div>
+                        
+                        <div id="viewCurrencyBadge" class="currency-badge hidden" style="font-size: 0.75rem; padding: 4px 8px;">TWD</div>
+                    </div>
+                    
                     <div class="equation-container">
                         <div class="eq-item income"><span class="eq-val" id="summaryIncome">$0</span></div>
-                        <span class="eq-operator">+</span>
+                        <span class="eq-operator">-</span>
                         <div class="eq-item expense"><span class="eq-val" id="summaryExpense">$0</span></div>
                         <span class="eq-operator">=</span>
                         <div class="eq-item balance"><span class="eq-val" id="summaryBalance">$0</span></div>
@@ -210,7 +236,16 @@
                 </div>
 
                 <div class="recur-input-group">
-                    <input type="number" id="recurAmount" class="recur-input amount" placeholder="$0">
+                    <div class="input-with-currency">
+                        <input type="number" id="recurAmount" class="recur-input amount" placeholder="$0" style="border:none; border-radius:0;">
+                        <div id="recurCurrencyWrapper" class="custom-select-wrapper" style="width: 65px; min-width: 65px;">
+                            <div id="recurCurrencyTrigger" class="custom-select-trigger embedded">
+                                <span id="recurCurrencyText">TWD</span>
+                            </div>
+                            <div id="recurCurrencyOptions" class="custom-select-options hidden">
+                                </div>
+                        </div>
+                    </div>
                     <input type="text" id="recurNote" class="recur-input" placeholder="Note">
                 </div>
 
@@ -249,11 +284,11 @@
                 <div class="recur-date-range recur-date-group">
                     <div class="date-field-group">
                         <label class="summary-label" style="margin-bottom: 4px; text-align: left;">STARTS</label>
-                        <input type="date" id="recurStartDate" class="recur-input minimal-date">
+                        <input type="text" id="recurStartDate" class="recur-input minimal-date" placeholder="Select Date" readonly style="cursor: pointer;">
                     </div>
                     <div class="date-field-group">
                         <label class="summary-label" style="margin-bottom: 4px; text-align: left;">ENDS</label>
-                        <input type="date" id="recurEndDate" class="recur-input minimal-date">
+                        <input type="text" id="recurEndDate" class="recur-input minimal-date" placeholder="Select Date" readonly style="cursor: pointer;">
                     </div>
                 </div>
 
@@ -295,24 +330,49 @@
     <div id="dateRangeOverlay" class="overlay hidden" style="z-index: 350;">
         <div class="picker-card">
             <div class="picker-header">
-                <div class="overlay-title">SELECT RANGE</div>
-                <div id="btnPickerClose" class="btn-close-card">✕</div>
-            </div>
-            <div class="picker-body">
-                <div class="picker-nav">
+                <div class="overlay-title" id="pickerTitleLabel" style="display:none;">SELECT RANGE</div> 
+                
+                <div class="picker-nav-controls">
                     <button id="btnCalPrev" class="nav-btn">←</button>
-                    <div class="picker-months-label" id="pickerMonthsLabel"></div>
+                    
+                    <div class="picker-months-label clickable" id="pickerMonthsLabel">2025 / 01</div>
+                    
                     <button id="btnCalNext" class="nav-btn">→</button>
                 </div>
+
+                <div id="btnPickerClose" class="btn-close-card">✕</div>
+
+                <div id="pickerDateDropdown" class="nav-date-dropdown hidden" style="top: 60px;">
+                    <div class="dropdown-year-row">
+                        <button id="pdBtnPrevYear" class="dd-year-btn">‹</button>
+                        <span id="pdYearDisplay">2025</span>
+                        <button id="pdBtnNextYear" class="dd-year-btn">›</button>
+                    </div>
+                    <div class="dropdown-month-grid" id="pdMonthGrid">
+                        <div class="dd-month-item p-month" data-m="0">JAN</div>
+                        <div class="dd-month-item p-month" data-m="1">FEB</div>
+                        <div class="dd-month-item p-month" data-m="2">MAR</div>
+                        <div class="dd-month-item p-month" data-m="3">APR</div>
+                        <div class="dd-month-item p-month" data-m="4">MAY</div>
+                        <div class="dd-month-item p-month" data-m="5">JUN</div>
+                        <div class="dd-month-item p-month" data-m="6">JUL</div>
+                        <div class="dd-month-item p-month" data-m="7">AUG</div>
+                        <div class="dd-month-item p-month" data-m="8">SEP</div>
+                        <div class="dd-month-item p-month" data-m="9">OCT</div>
+                        <div class="dd-month-item p-month" data-m="10">NOV</div>
+                        <div class="dd-month-item p-month" data-m="11">DEC</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="picker-body">
                 <div class="calendar-wrapper">
                     <div class="cal-pane" id="calLeft"></div>
                     <div class="cal-pane" id="calRight"></div>
                 </div>
                 <div class="picker-footer">
-                    <div class="selected-range-text" id="selectedRangeText">
-                        Select start date...
-                    </div>
-                    <button id="btnApplyRange" class="btn-black">APPLY</button>
+                    <div class="selected-range-text" id="selectedRangeText">Select start date...</div>
+                    <button id="btnApplyRange" class="btn-black btn-action-unified">APPLY</button>
                 </div>
             </div>
         </div>
@@ -391,7 +451,7 @@
                 </button>
             </div>
             
-            <div class="app-version">Personal Flow v1.2</div>
+            <div class="app-version" id="dispAppVersion">Personal Flow v1.2</div>
         </div>
     </div>
 
@@ -454,4 +514,63 @@
     </script> <script>
         document.write(`<script src="app.js?v=${APP_VERSION}"><\/script>`);
     </script>
+
+    <div id="flowSettingsOverlay" class="overlay hidden" style="z-index: 600;">
+        <div class="login-card recur-card-layout">
+            <div class="recur-card-header">
+                <div class="overlay-title clean-font recur-card-title">FLOW CURRENCY</div>
+                <div id="btnFlowSettingsClose" class="btn-close-card">✕</div>
+            </div>
+            <div class="recur-form-body" style="padding: 20px;">
+                <div class="setting-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-weight:700; font-size:0.9rem;">Multi-Currency Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleMultiCurrency">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div id="multiCurrencyConfigPanel" class="hidden">
+                    <div style="height: 1px; background: #eee; margin: 15px 0 20px 0;"></div>
+
+                    <p style="font-size:0.8rem; color:#666; margin-bottom: 15px; line-height: 1.5;">
+                        Check maximum 5 currencies to enable them for transactions.<br>
+                    </p>
+
+                    <div class="unified-currency-list" id="unifiedCurrencyList">
+                        </div>
+                </div>
+                
+                <div style="margin-top:20px; font-size:0.7rem; color:#ccc; text-align:center;">
+                    Rates provided by ExchangeRate-API
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="systemToast" class="system-toast">Notification</div>
+
+    <div id="currencyConvertOverlay" class="overlay hidden" style="z-index: 700; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+        <div class="conv-card">
+            <div class="conv-title">DISABLE MULTI-CURRENCY?</div>
+            
+            <p class="conv-desc" style="margin-bottom: 10px;">
+                Your transactions use the following currencies:
+                <br>
+                <span id="convCurrencyList" style="font-weight: 700; color: #000; display: block; margin-top: 6px;"></span>
+            </p>
+            
+            <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                <label style="font-size: 0.7rem; font-weight: 700; color: #999; margin-bottom: 6px; display: block;">CONVERT ALL AMOUNTS TO</label>
+                <select id="selConvTarget" class="conv-select"></select>
+            </div>
+
+            <div class="conv-actions">
+                <button id="btnConvertConfirm" class="btn-convert">CONVERT & DISABLE</button>
+                <button id="btnCancelConv" class="btn-cancel-conv">CANCEL</button>
+            </div>
+        </div>
+    </div>
 </body>
+
+</html>
