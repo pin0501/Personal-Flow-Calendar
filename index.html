@@ -4,18 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Personal Flow Calendar</title>
     <script>
         // [CONFIG] 全域版本號控制
-        window.APP_VERSION = '1.2.4';
-    </script>
-    <title>Personal Flow Calendar</title>
+        window.APP_VERSION = '1.2.5'; // 更新版號時改這裡即可
 
-    <script>
-        document.write(`<link rel="stylesheet" href="style.css?v=${APP_VERSION}">`);
+        // 1. 動態載入 CSS (不會卡住畫面)
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'style.css?v=' + window.APP_VERSION;
+        document.head.appendChild(link);
+
+        // 2. 動態載入 JS (關鍵在於 defer)
+        var script = document.createElement('script');
+        script.src = 'app.js?v=' + window.APP_VERSION;
+        
+        // [重要] defer = true 
+        // 這告訴瀏覽器：背景下載這個 JS，但等到 HTML 全部解析完才執行。
+        // 這樣可以確保 JS 執行時，網頁上的按鈕、選單都已經存在了。
+        script.defer = true; 
+        document.body.appendChild(script);
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="preconnect" href="https://flagcdn.com">
+    <link rel="preconnect" href="https://open.er-api.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Playfair+Display:wght@400;600;700;900&display=swap"
         rel="stylesheet">
