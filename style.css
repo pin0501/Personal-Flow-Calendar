@@ -5435,3 +5435,86 @@ input[type=number] {
     background: #fff5f5 !important;
     color: #dc2626 !important;
 }
+
+/* =========================================
+   [MOBILE HOTFIX] Layout Repairs
+   針對手機版 (寬度 < 700px) 的強制修正
+   ========================================= */
+@media (max-width: 700px) {
+
+    /* --- 1. Date Picker Footer: 改為上下堆疊 --- */
+    /* 解決「左邊文字空間不足」的問題，讓日期文字在上面，按鈕在下面填滿 */
+    .picker-footer {
+        flex-direction: column !important; /* 強制垂直排列 */
+        align-items: stretch !important;   /* 寬度拉滿 */
+        gap: 15px !important;              /* 上下間距 */
+        height: auto !important;           /* 高度自動 */
+        padding-bottom: 5px !important;
+    }
+
+    .selected-range-text {
+        text-align: center !important;     /* 文字置中 */
+        white-space: normal !important;    /* 允許文字換行 */
+        font-size: 1rem !important;        /* 字體大小調整 */
+        margin-bottom: 5px;
+        width: 100%;
+        flex: none !important;             /* 解除彈性伸縮，固定佔位 */
+    }
+
+    #btnApplyRange {
+        width: 100% !important;            /* 按鈕填滿寬度 */
+        margin: 0 !important;
+        flex: none !important;
+    }
+
+
+    /* --- 2. Unsaved Flows Item: 強制左右排列 --- */
+    /* 解決截圖中「文字與垃圾桶變成垂直」的問題 */
+    .sync-item {
+        flex-direction: row !important;    /* 強制橫向排列 */
+        align-items: center !important;    /* 垂直置中 */
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;      /* 禁止換行 */
+        gap: 10px !important;
+    }
+
+    .sync-info {
+        flex: 1 !important;                /* 左側文字佔據剩餘空間 */
+        min-width: 0;                      /* 防止文字過長撐開 */
+        text-align: left !important;
+    }
+
+    .btn-sync-delete {
+        flex: 0 0 auto !important;         /* 按鈕固定寬度 */
+        margin: 0 !important;
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+    }
+}
+
+/* =========================================
+   [UX Upgrade] Interactive Date Footer
+   讓日期選擇器底部的文字可點擊跳轉
+   ========================================= */
+
+.p-date {
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    border-bottom: 1px solid transparent; /* 預留底線空間 */
+    padding-bottom: 1px;
+}
+
+.p-date:hover {
+    opacity: 0.6;
+    border-bottom-color: #000; /* Hover 時出現底線提示 */
+}
+
+/* 確保箭頭不可點擊 */
+.picker-arrow {
+    cursor: default;
+    color: #ccc;
+    margin: 0 8px;
+    font-size: 0.8rem;
+}

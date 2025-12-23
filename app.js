@@ -2660,11 +2660,13 @@ function setupUI() {
     const openRecurRangePicker = () => openDateRangePicker('range-recur');
 
     if (rStart) {
-        rStart.onclick = openRecurRangePicker;
+        // 傳入 'start' 參數
+        rStart.onclick = () => openDateRangePicker('range-recur', null, 'start');
         rStart.readOnly = true; 
     }
     if (rEnd) {
-        rEnd.onclick = openRecurRangePicker;
+        // 傳入 'end' 參數，讓日曆一打開就顯示結束日期的月份
+        rEnd.onclick = () => openDateRangePicker('range-recur', null, 'end');
         rEnd.readOnly = true;
     }
     
@@ -2905,12 +2907,11 @@ function jumpToDateContext(dateStr) {
     }
 }
 
-// [修改] 支援模式參數
-function openDateRangePicker(mode = 'range', targetInput = null) {
-    pickerMode = mode; // mode 可能是 'range', 'single', 或 'range-recur'
+// [修改] 增加 focusTarget 參數 ('start' 或 'end')
+function openDateRangePicker(mode = 'range', targetInput = null, focusTarget = 'start') {
+    pickerMode = mode; 
     pickerTargetInput = targetInput;
     
-    // [Fix] 永遠顯示 Header (移除 single-mode class 的操作)
     const card = dateRangeOverlay.querySelector('.picker-card');
     if (card) card.classList.remove('single-mode');
 
@@ -2918,11 +2919,9 @@ function openDateRangePicker(mode = 'range', targetInput = null) {
     
     // 初始化日期邏輯
     if (pickerMode === 'range-recur') {
-        // [New] 從 Recurring 輸入框讀取現有日期
         const sVal = getEl('recurStartDate')?.value;
         const eVal = getEl('recurEndDate')?.value;
         
-        // 解析 YYYY-MM-DD
         const parse = (str) => {
             if (!str) return null;
             const parts = str.split('-');
@@ -2932,15 +2931,18 @@ function openDateRangePicker(mode = 'range', targetInput = null) {
         const existingStart = parse(sVal);
         const existingEnd = parse(eVal);
 
-        // 設定 Picker 狀態
         tempStart = existingStart || new Date();
-        tempEnd = existingEnd || new Date(tempStart); // 預設結束日等於開始日
+        tempEnd = existingEnd || new Date(tempStart);
         
-        pickerBaseDate = new Date(tempStart);
-        pickerBaseDate.setDate(1); // 確保從該月1號開始渲染
+        // [關鍵 UX] 根據點擊的是 Start 還是 End 輸入框，決定日曆預設顯示哪個月
+        if (focusTarget === 'end' && existingEnd) {
+            pickerBaseDate = new Date(existingEnd);
+        } else {
+            pickerBaseDate = new Date(tempStart);
+        }
+        pickerBaseDate.setDate(1); 
 
     } else if (pickerMode === 'single') {
-        // ... (保留原本單選邏輯，如果還有其他地方用的話) ...
         if (targetInput && targetInput.value) {
             const parts = targetInput.value.split('-');
             if (parts.length === 3) {
@@ -2955,7 +2957,7 @@ function openDateRangePicker(mode = 'range', targetInput = null) {
         pickerBaseDate = new Date(tempStart);
 
     } else {
-        // [原邏輯] 一般 Range (Footer Filter)
+        // 一般 Filter Range
         tempStart = new Date(pickerStartDate);
         tempEnd = new Date(pickerEndDate);
         pickerBaseDate = new Date(pickerStartDate);
@@ -3043,21 +3045,44 @@ function renderDatePicker() {
     
     getEl('pickerMonthsLabel').textContent = formatMonth(pickerBaseDate);
     
-    // [修改] 底部文字顯示
-    let rangeTextHtml = '';
+    // [UX Upgrade] 底部文字顯示與互動綁定
+    const footerTextContainer = getEl('selectedRangeText');
     const sText = tempStart ? formatDate(tempStart) : 'Select date...';
     
     if (pickerMode === 'single') {
-        rangeTextHtml = `<span class="p-date">${sText}</span>`;
+        // 單選模式
+        footerTextContainer.innerHTML = `<span class="p-date" id="pDateStart">${sText}</span>`;
     } else {
+        // 區間模式
         const eText = tempEnd ? formatDate(tempEnd) : (tempStart ? 'Select end (or Apply)' : '...');
-        rangeTextHtml = `
-            <span class="p-date">${sText}</span>
+        footerTextContainer.innerHTML = `
+            <span class="p-date" id="pDateStart">${sText}</span>
             <span class="picker-arrow">→</span>
-            <span class="p-date">${eText}</span>
+            <span class="p-date" id="pDateEnd">${eText}</span>
         `;
     }
-    getEl('selectedRangeText').innerHTML = rangeTextHtml;
+
+    // [關鍵] 綁定點擊事件：點擊文字 -> 跳轉日曆至該月份
+    const btnStart = getEl('pDateStart');
+    const btnEnd = getEl('pDateEnd');
+
+    if (btnStart && tempStart) {
+        btnStart.onclick = (e) => {
+            e.stopPropagation();
+            pickerBaseDate = new Date(tempStart);
+            pickerBaseDate.setDate(1);
+            renderDatePicker();
+        };
+    }
+
+    if (btnEnd && tempEnd) {
+        btnEnd.onclick = (e) => {
+            e.stopPropagation();
+            pickerBaseDate = new Date(tempEnd);
+            pickerBaseDate.setDate(1);
+            renderDatePicker();
+        };
+    }
 }
 
 function jumpMonth(delta) {
