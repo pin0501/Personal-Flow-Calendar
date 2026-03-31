@@ -855,6 +855,20 @@ body {
     background: #fff;
 }
 
+/* Align inputs with static text columns for seamless transition */
+.quick-input-field.inc,
+.quick-input-field.exp {
+    text-align: right;
+    padding-right: 9px; /* Matches .d-col 10px padding minus 1px border */
+    padding-left: 8px;
+}
+
+.quick-input-field.note {
+    text-align: left;
+    padding-left: 9px;  /* Matches .d-col 10px padding minus 1px border */
+    padding-right: 8px;
+}
+
 /* =========================================
    [Fix] Add space between list and input (Desktop)
    ========================================= */
@@ -5693,6 +5707,7 @@ input[type=number] {
 /* Update button style (replaces + button) */
 .btn-quick-add.update-mode {
     background: #000;
+    font-size: 1.1rem !important;
 }
 
 .btn-quick-add.update-mode:hover {
@@ -5900,5 +5915,6 @@ input[type=number] {
         width: 40px !important;
         height: 40px !important;
         flex: 0 0 40px !important;
+        font-size: 1.1rem !important;
     }
 }
