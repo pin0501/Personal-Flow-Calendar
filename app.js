@@ -75,6 +75,13 @@ let pendingCloudData = null;
 let pendingLocalData = null;
 let flowToDeleteId = null;
 
+// Edit Transaction State
+let editingTxId = null;
+let editingTxDate = null;
+
+// Overlay History Stack (for mobile back button)
+let overlayStack = [];
+
 // --- DOM Elements Helper ---
 const getEl = (id) => document.getElementById(id);
 
@@ -188,6 +195,7 @@ function init() {
 
     resetViewAroundDate(new Date(), 'auto');
     syncViewStateClasses();
+    setupOverlayBackButton();
     setTimeout(() => { isInitialRender = false; }, 1000);
 }
 
@@ -1499,10 +1507,20 @@ function renderInlineDetails(wrapper, dateStr) {
             <div class="d-col income">${incTxt}</div>
             <div class="d-col expense">${expTxt}</div>
             <div class="d-col note">${item.note || ''}</div>
-            <div class="d-del">×</div>
+            <div class="d-actions">
+                <div class="d-edit" title="Edit">
+                    <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </div>
+                <div class="d-del">×</div>
+            </div>
         `;
+        div.querySelector('.d-edit').onclick = (e) => {
+            e.stopPropagation();
+            startEditTransaction(item, dateStr, wrapper);
+        };
         div.querySelector('.d-del').onclick = (e) => {
             e.stopPropagation();
+            cancelEditTransaction(dateStr, wrapper);
             deleteTransaction(item.id, dateStr, wrapper);
         };
         list.appendChild(div);
@@ -1566,10 +1584,79 @@ function renderInlineDetails(wrapper, dateStr) {
             }
             inp.onkeydown = (e) => {
                 if (e.key === 'Enter') addTransactionUnified(dateStr, 'timeline', wrapper);
+                if (e.key === 'Escape') cancelEditTransaction(dateStr, wrapper);
             };
         });
         wrapper.querySelector('.row-details').appendChild(inputRow);
     }
+
+    // If we are in edit mode for this date, restore the edit state
+    if (editingTxId && editingTxDate === dateStr) {
+        const tx = getCurrentTransactions().find(t => t.id === editingTxId);
+        if (tx) startEditTransaction(tx, dateStr, wrapper);
+    }
+}
+
+// --- Inline Edit Helpers ---
+function startEditTransaction(item, dateStr, wrapper) {
+    editingTxId = item.id;
+    editingTxDate = dateStr;
+    
+    const incInput = wrapper.querySelector(`#inc-${dateStr}`);
+    const expInput = wrapper.querySelector(`#exp-${dateStr}`);
+    const noteInput = wrapper.querySelector(`#note-${dateStr}`);
+    const addBtn = wrapper.querySelector('.btn-quick-add');
+    const inputRow = wrapper.querySelector('.quick-input');
+    
+    if (!incInput || !expInput || !noteInput || !addBtn) return;
+    
+    // Fill values
+    incInput.value = item.income > 0 ? item.income : '';
+    expInput.value = item.expense > 0 ? item.expense : '';
+    noteInput.value = item.note || '';
+    incInput.focus();
+    
+    // Switch button to update mode
+    addBtn.textContent = '✓';
+    addBtn.classList.add('update-mode');
+    
+    // Highlight input row
+    if (inputRow) inputRow.classList.add('edit-mode');
+    
+    // Add cancel button if not exists
+    if (!wrapper.querySelector('.btn-edit-cancel')) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-edit-cancel';
+        cancelBtn.textContent = '✕';
+        cancelBtn.onclick = (e) => {
+            e.stopPropagation();
+            cancelEditTransaction(dateStr, wrapper);
+        };
+        addBtn.parentNode.insertBefore(cancelBtn, addBtn);
+    }
+}
+
+function cancelEditTransaction(dateStr, wrapper) {
+    editingTxId = null;
+    editingTxDate = null;
+    
+    if (!wrapper) return;
+    const incInput = wrapper.querySelector(`#inc-${dateStr}`);
+    const expInput = wrapper.querySelector(`#exp-${dateStr}`);
+    const noteInput = wrapper.querySelector(`#note-${dateStr}`);
+    const addBtn = wrapper.querySelector('.btn-quick-add');
+    const inputRow = wrapper.querySelector('.quick-input');
+    const cancelBtn = wrapper.querySelector('.btn-edit-cancel');
+    
+    if (incInput) incInput.value = '';
+    if (expInput) expInput.value = '';
+    if (noteInput) noteInput.value = '';
+    if (addBtn) {
+        addBtn.textContent = '+';
+        addBtn.classList.remove('update-mode');
+    }
+    if (inputRow) inputRow.classList.remove('edit-mode');
+    if (cancelBtn) cancelBtn.remove();
 }
 
 // --- Calendar View Logic ---
@@ -1854,25 +1941,44 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
     }
     if (!inc && !exp && !note) return;
     const resolveCurrency = (elementId) => {
-        // elementId 現在傳入的是 Wrapper ID (例如 'dd-inc-2025-01-01' 或 'footerDdInc')
         const wrapper = document.getElementById(elementId);
         if (!wrapper) return baseCurrency;
-        
-        // 嘗試讀取 span 文字 (自定義選單)
         const span = wrapper.querySelector('.custom-select-trigger span');
         if (span) return span.textContent.trim();
-        
-        // Fallback (如果找不到)
         return baseCurrency;
     };
 
-    // 修改呼叫參數，傳入新的 Wrapper ID
+    let incCurrency = baseCurrency, expCurrency = baseCurrency;
     if (multiCurrencyEnabled) {
         const incId = source === 'footer' ? 'footerDdInc' : `dd-inc-${dateStr}`;
         const expId = source === 'footer' ? 'footerDdExp' : `dd-exp-${dateStr}`;
         incCurrency = resolveCurrency(incId);
         expCurrency = resolveCurrency(expId);
     }
+
+    // --- Edit Mode: Update existing transaction ---
+    if (editingTxId && source === 'timeline') {
+        const transactions = getCurrentTransactions();
+        const txIdx = transactions.findIndex(t => t.id === editingTxId);
+        if (txIdx !== -1) {
+            transactions[txIdx].income = inc;
+            transactions[txIdx].expense = exp;
+            transactions[txIdx].note = note;
+            if (multiCurrencyEnabled) {
+                transactions[txIdx].incCurrency = incCurrency;
+                transactions[txIdx].expCurrency = expCurrency;
+            }
+            setCurrentTransactions(transactions);
+        }
+        // Reset edit state
+        cancelEditTransaction(dateStr, rowWrapper);
+        const targetWrapper = rowWrapper || document.querySelector(`.row-wrapper[data-date="${dateStr}"]`);
+        refreshRowDisplay(targetWrapper, dateStr);
+        updateTotalForecast();
+        showUndoToast(null, 'Transaction updated');
+        return;
+    }
+
     const newTx = { id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`, date: dateStr, income: inc, expense: exp, note: note, createdAt: Date.now() };
     if (multiCurrencyEnabled) {
         newTx.incCurrency = incCurrency;
@@ -1885,6 +1991,7 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
         getEl('footerInc').value = ''; getEl('footerExp').value = ''; getEl('footerNote').value = '';
         updateFooterEditor(dateStr);
         refreshCalendarCell(dateStr);
+        updateTotalForecast();
     } else {
         document.getElementById(`inc-${dateStr}`).value = '';
         document.getElementById(`exp-${dateStr}`).value = '';
@@ -1912,21 +2019,31 @@ function deleteTransaction(txId, dateStr, rowWrapper = null) {
             renderMainCalendarGrid();
         }
     }
+    updateTotalForecast();
     showUndoToast({ type: 'tx', tx, dateStr }, 'Transaction deleted');
 }
 
 function showUndoToast(dataObj, messageText = 'Transaction deleted') {
     const toast = getEl('undoToast');
     const text = getEl('undoText');
+    const undoBtn = getEl('btnUndo');
     if (undoTimeout) clearTimeout(undoTimeout);
     if (undoFadeTimeout) clearTimeout(undoFadeTimeout);
-    if (dataObj?.tx && dataObj?.dateStr && !dataObj.type) {
-        undoData = { type: 'tx', ...dataObj };
+    
+    // Handle null dataObj (simple notification, no undo)
+    if (!dataObj) {
+        undoData = null;
+        if (undoBtn) undoBtn.style.display = 'none';
     } else {
-        undoData = dataObj;
-    }
-    if (!undoData?.type) {
-        undoData = { type: 'tx', tx: dataObj, dateStr: dataObj?.dateStr };
+        if (undoBtn) undoBtn.style.display = '';
+        if (dataObj?.tx && dataObj?.dateStr && !dataObj.type) {
+            undoData = { type: 'tx', ...dataObj };
+        } else {
+            undoData = dataObj;
+        }
+        if (!undoData?.type) {
+            undoData = { type: 'tx', tx: dataObj, dateStr: dataObj?.dateStr };
+        }
     }
     text.textContent = messageText;
     toast.classList.remove('hidden');
@@ -1935,6 +2052,7 @@ function showUndoToast(dataObj, messageText = 'Transaction deleted') {
         if (e.target.id === 'btnUndo' || e.target.closest('#btnUndo')) return;
         toast.classList.add('hidden');
         undoData = null;
+        if (undoBtn) undoBtn.style.display = '';
         if (undoTimeout) {
             clearTimeout(undoTimeout);
             undoTimeout = null;
@@ -1951,6 +2069,7 @@ function showUndoToast(dataObj, messageText = 'Transaction deleted') {
         toast.classList.add('hidden');
         toast.classList.remove('fading-out');
         undoData = null;
+        if (undoBtn) undoBtn.style.display = '';
     }, 8000);
 }
 
@@ -2017,6 +2136,7 @@ function performUndo() {
             }
         }
     }
+    updateTotalForecast();
     getEl('undoToast').classList.add('hidden');
     undoData = null;
     if (undoTimeout) clearTimeout(undoTimeout);
@@ -2680,6 +2800,8 @@ function setupUI() {
 function setupScrollListener() {
     if (!timelineContainer) return;
     setupInfiniteScroll();
+    let prevScrollTop = 0;
+    
     timelineContainer.onscroll = () => {
         handleScroll();
         const st = timelineContainer.scrollTop;
@@ -2690,20 +2812,60 @@ function setupScrollListener() {
             lastScrollTop = st;
         }
         if (snapTimeout) clearTimeout(snapTimeout);
+        
+        const scrollDirection = st > prevScrollTop ? 'down' : 'up';
+        prevScrollTop = st;
+        
         snapTimeout = setTimeout(() => {
             if (isLoading || isNavigating) return;
+            
+            // Skip snap on mobile when any row is expanded (tall)
+            const isMobile = window.innerWidth <= 700;
+            if (isMobile) {
+                const expandedRow = document.querySelector('.row-wrapper.expanded');
+                if (expandedRow) return; // Don't snap when detail rows are open on mobile
+            }
+            
             const rect = timelineContainer.getBoundingClientRect();
             const topEl = document.elementFromPoint(rect.left + 50, rect.top + 10);
-            if (topEl) {
-                const row = topEl.closest('.row-wrapper');
-                if (row) {
+            if (!topEl) return;
+            const currentRow = topEl.closest('.row-wrapper');
+            if (!currentRow) return;
+            
+            const rowTop = currentRow.offsetTop;
+            const rowHeight = currentRow.offsetHeight;
+            const containerScrollTop = timelineContainer.scrollTop;
+            const distanceIntoRow = containerScrollTop - rowTop;
+            
+            // Smart snap threshold based on scroll direction:
+            // - Scrolling DOWN: snap to next row if past 20% of current row height
+            // - Scrolling UP: snap to current row if within top 80% 
+            // - For short rows (collapsed), use standard snap to top
+            if (rowHeight > rect.height * 0.6) {
+                // Tall row (e.g. expanded with many transactions):
+                // Don't force snap - let user scroll freely
+                return;
+            }
+            
+            const threshold = scrollDirection === 'down' ? 0.2 : 0.8;
+            
+            if (distanceIntoRow > rowHeight * threshold && scrollDirection === 'down') {
+                // Scrolling down and past threshold - snap to next row
+                const nextRow = currentRow.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('row-wrapper')) {
                     timelineContainer.scrollTo({
-                        top: row.offsetTop,
+                        top: nextRow.offsetTop,
                         behavior: 'smooth'
                     });
                 }
+            } else {
+                // Snap to current row top
+                timelineContainer.scrollTo({
+                    top: rowTop,
+                    behavior: 'smooth'
+                });
             }
-        }, 150);
+        }, 200);
     };
 }
 
@@ -2837,21 +2999,24 @@ function renderFilterList() {
         groups[dateStr].forEach(i => {
             const row = document.createElement('div');
             row.className = 'filter-item-row';
-            // [新增] 準備幣別標籤 HTML (使用 tx-currency-tag 樣式)
             const iTxCur = (i.incCurrency || baseCur).toUpperCase();
             const eTxCur = (i.expCurrency || baseCur).toUpperCase();
             
             const iCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${iTxCur}</span>` : '';
             const eCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${eTxCur}</span>` : '';
 
-            // [修改] 將標籤加入金額字串
             const incStr = i.income > 0 ? `+$${formatCompactNumber(i.income)}${iCurHtml}` : '';
             const expStr = i.expense > 0 ? `-$${formatCompactNumber(i.expense)}${eCurHtml}` : '';
             row.innerHTML = `
                 <div class="f-amt income">${incStr}</div>
                 <div class="f-amt expense">${expStr}</div>
                 <div class="f-note filter-note-col">${i.note || ''}</div>
-                <div class="btn-jump-date" title="Jump to Edit">
+                <div class="btn-edit-filter" title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                    </svg>
+                </div>
+                <div class="btn-jump-date" title="Jump to Date">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
@@ -2859,6 +3024,10 @@ function renderFilterList() {
                     </svg>
                 </div>
             `;
+            row.querySelector('.btn-edit-filter').onclick = (e) => {
+                e.stopPropagation();
+                openFilterInlineEdit(row, i, dateStr, groupDiv);
+            };
             row.querySelector('.btn-jump-date').onclick = (e) => {
                 e.stopPropagation();
                 jumpToDateContext(dateStr);
@@ -3745,6 +3914,157 @@ function executeRecurringAdd() {
     updateTotalForecast();
 
     showUndoToast({ type: 'batch', txs: newTxs }, `Added ${newTxs.length} recurring items`);
+}
+
+// --- Filter Overlay Inline Edit ---
+function openFilterInlineEdit(displayRow, txData, dateStr, groupDiv) {
+    // Remove any existing edit row
+    const existingEdit = groupDiv.querySelector('.filter-edit-row');
+    if (existingEdit) existingEdit.remove();
+    
+    const editRow = document.createElement('div');
+    editRow.className = 'filter-edit-row';
+    editRow.innerHTML = `
+        <input type="number" class="fe-inc" value="${txData.income || ''}" placeholder="Inc" min="0">
+        <input type="number" class="fe-exp" value="${txData.expense || ''}" placeholder="Exp" min="0">
+        <input type="text" class="fe-note" value="${txData.note || ''}" placeholder="Note">
+        <div class="filter-edit-actions">
+            <button class="btn-filter-save" title="Save">✓</button>
+            <button class="btn-filter-cancel" title="Cancel">✕</button>
+        </div>
+    `;
+    
+    // Insert edit row after display row
+    displayRow.after(editRow);
+    displayRow.style.display = 'none';
+    
+    editRow.querySelector('.fe-inc').focus();
+    
+    editRow.querySelector('.btn-filter-save').onclick = (e) => {
+        e.stopPropagation();
+        const newInc = parseFloat(editRow.querySelector('.fe-inc').value) || 0;
+        const newExp = parseFloat(editRow.querySelector('.fe-exp').value) || 0;
+        const newNote = editRow.querySelector('.fe-note').value.trim();
+        
+        if (!newInc && !newExp && !newNote) return;
+        
+        const transactions = getCurrentTransactions();
+        const idx = transactions.findIndex(t => t.id === txData.id);
+        if (idx !== -1) {
+            transactions[idx].income = newInc;
+            transactions[idx].expense = newExp;
+            transactions[idx].note = newNote;
+            setCurrentTransactions(transactions);
+            updateTotalForecast();
+            showUndoToast(null, 'Transaction updated');
+        }
+        renderFilterList();
+    };
+    
+    editRow.querySelector('.btn-filter-cancel').onclick = (e) => {
+        e.stopPropagation();
+        editRow.remove();
+        displayRow.style.display = '';
+    };
+    
+    // Enter to save, Escape to cancel
+    editRow.querySelectorAll('input').forEach(inp => {
+        inp.onkeydown = (e) => {
+            if (e.key === 'Enter') editRow.querySelector('.btn-filter-save').click();
+            if (e.key === 'Escape') editRow.querySelector('.btn-filter-cancel').click();
+        };
+    });
+}
+
+// --- Overlay History Management (Mobile Back Button) ---
+const OVERLAY_CONFIG = [
+    { id: 'currencyConvertOverlay', close: () => getEl('currencyConvertOverlay')?.classList.add('hidden') },
+    { id: 'flowSettingsOverlay', close: () => { getEl('flowSettingsOverlay')?.classList.add('hidden'); getEl('flowSettingsOverlay')?.classList.remove('expanded'); } },
+    { id: 'recurringOverlay', close: () => getEl('recurringOverlay')?.classList.add('hidden') },
+    { id: 'dateRangeOverlay', close: () => getEl('dateRangeOverlay')?.classList.add('hidden') },
+    { id: 'flowDeleteOverlay', close: () => { getEl('flowDeleteOverlay')?.classList.add('hidden'); flowToDeleteId = null; } },
+    { id: 'syncOverlay', close: () => getEl('syncOverlay')?.classList.add('hidden') },
+    { id: 'userProfileOverlay', close: () => getEl('userProfileOverlay')?.classList.add('hidden') },
+    { id: 'loginOverlay', close: () => getEl('loginOverlay')?.classList.add('hidden') },
+    { id: 'filterOverlay', close: () => getEl('filterOverlay')?.classList.add('hidden') },
+];
+
+function getTopmostOpenOverlay() {
+    for (const cfg of OVERLAY_CONFIG) {
+        const el = getEl(cfg.id);
+        if (el && !el.classList.contains('hidden')) return cfg;
+    }
+    return null;
+}
+
+function pushOverlayState(overlayId) {
+    overlayStack.push(overlayId);
+    history.pushState({ overlay: overlayId, stackLen: overlayStack.length }, '');
+}
+
+function popOverlayFromStack() {
+    if (overlayStack.length > 0) {
+        overlayStack.pop();
+    }
+}
+
+function setupOverlayBackButton() {
+    let isHandlingOverlayClose = false;
+    
+    window.addEventListener('popstate', (e) => {
+        if (isHandlingOverlayClose) {
+            // This popstate was triggered by our own history.back() cleanup
+            isHandlingOverlayClose = false;
+            return;
+        }
+        
+        // When back is pressed, check if there's an overlay to close
+        const topOverlay = getTopmostOpenOverlay();
+        if (topOverlay) {
+            // Temporarily disable observer reaction
+            isHandlingOverlayClose = true;
+            topOverlay.close();
+            popOverlayFromStack();
+            // Reset flag after a tick
+            setTimeout(() => { isHandlingOverlayClose = false; }, 100);
+        }
+    });
+
+    // Observe overlay visibility changes to auto-push/pop history states
+    const observeOverlay = (overlayId) => {
+        const el = getEl(overlayId);
+        if (!el) return;
+        
+        const observer = new MutationObserver((mutations) => {
+            if (isHandlingOverlayClose) return;
+            
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const isHidden = el.classList.contains('hidden');
+                    const isInStack = overlayStack.includes(overlayId);
+                    
+                    if (!isHidden && !isInStack) {
+                        // Overlay was opened - push state
+                        pushOverlayState(overlayId);
+                    } else if (isHidden && isInStack) {
+                        // Overlay was closed programmatically (not via back button)
+                        const idx = overlayStack.lastIndexOf(overlayId);
+                        if (idx !== -1) {
+                            overlayStack.splice(idx, 1);
+                            if (history.state && history.state.overlay === overlayId) {
+                                isHandlingOverlayClose = true;
+                                history.back();
+                            }
+                        }
+                    }
+                }
+            });
+        });
+        
+        observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+    };
+    
+    OVERLAY_CONFIG.forEach(cfg => observeOverlay(cfg.id));
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

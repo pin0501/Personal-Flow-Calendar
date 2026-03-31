@@ -44,6 +44,84 @@ body {
     position: relative;
 }
 
+/* =========================================
+   [Global] Prevent Text Selection on Interactive Elements
+   ========================================= */
+.nav-btn,
+.btn-nav-icon,
+.nav-btn-today,
+.btn-close,
+.btn-close-card,
+.btn-mini-close,
+.toggle-icon,
+.mode-label,
+.summary-left,
+.summary-label,
+.dropdown-arrow,
+.d-del,
+.chip-del,
+.btn-quick-add,
+.btn-mini-add,
+.flow-action,
+.flow-item,
+.btn-delete-flow,
+.drag-handle,
+.btn-footer-action,
+.btn-footer-filter,
+.filter-chip,
+.r-type-btn,
+.freq-tab-m,
+.day-circle,
+.btn-add-month-day,
+.dd-year-btn,
+.dd-month-item,
+.btn-black,
+.btn-danger,
+.btn-secondary,
+.btn-undo,
+.btn-google-login,
+.btn-profile-action,
+.btn-sync-delete,
+.btn-flow-edit-mode,
+.btn-jump-date,
+.btn-convert,
+.btn-cancel-conv,
+.list-header,
+.cal-week-header,
+.overlay-title,
+.overlay-header,
+.clean-font,
+.auth-avatar-btn,
+.editable-name,
+.flow-save-btn,
+.currency-badge,
+.recur-card-header,
+.picker-months-label,
+.picker-nav-controls,
+.picker-footer,
+.current-month-display,
+.cal-day,
+.main-cal-cell .m-day,
+.eq-operator,
+.s-chip,
+.custom-select-trigger,
+.custom-option,
+.uc-item,
+.btn-make-default,
+.badge-default,
+.switch,
+.mini-tx-chip,
+.sync-item,
+.conv-actions button,
+.btn-text-only,
+.p-date,
+.selected-range-text {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
 .hidden {
     display: none !important;
 }
@@ -1410,9 +1488,8 @@ body {
 
 .filter-item-row {
     display: grid;
-    /* [修正] 改為 4 欄設定，解決按鈕換行問題 */
-    /* 收入 1.2 | 支出 1.2 | 備註 2 (最寬) | 按鈕 30px (固定) */
-    grid-template-columns: 1.2fr 1.2fr 2fr 30px;
+    /* 5 欄設定：收入 | 支出 | 備註 | 編輯按鈕 | 跳轉按鈕 */
+    grid-template-columns: 1.2fr 1.2fr 2fr 30px 30px;
     
     align-items: center;
     padding: 10px 15px;
@@ -2802,7 +2879,7 @@ body {
 
     /* Filter List Mobile */
     .filter-item-row {
-        grid-template-columns: 1fr 1fr 1.5fr 30px !important; 
+        grid-template-columns: 1fr 1fr 1.5fr 28px 28px !important; 
         gap: 4px;
         padding: 10px 8px;
     }
@@ -3011,6 +3088,34 @@ body {
     .d-del {
         flex: 0 0 auto !important;
         margin-left: 0 !important;
+    }
+
+    /* 編輯/刪除按鈕群組 */
+    .d-actions {
+        flex: 0 0 auto !important;
+        gap: 2px !important;
+        margin-left: auto !important;
+    }
+
+    /* 編輯按鈕 - 加大觸控範圍 */
+    .d-edit {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px;
+    }
+    .d-edit svg {
+        width: 13px !important;
+        height: 13px !important;
+    }
+
+    /* 刪除按鈕 - 加大觸控範圍 */
+    .d-actions .d-del {
+        width: 28px !important;
+        height: 28px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 1.1rem !important;
     }
 
     /* --- 2. 輸入列 (改回換行模式 / 兩行佈局) --- */
@@ -5517,4 +5622,267 @@ input[type=number] {
     color: #ccc;
     margin: 0 8px;
     font-size: 0.8rem;
+}
+
+/* =========================================
+   [Feature] Inline Transaction Editing
+   ========================================= */
+
+/* Edit button in detail rows */
+.d-edit {
+    color: #ccc;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.d-edit:hover {
+    color: #000;
+}
+
+.d-edit svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Detail item action group */
+.d-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* Edit mode highlight on input row */
+.quick-input.edit-mode {
+    background: #f9f9f9;
+    border-left: 2px solid #000;
+}
+
+/* Update button style (replaces + button) */
+.btn-quick-add.update-mode {
+    background: #000;
+}
+
+.btn-quick-add.update-mode:hover {
+    background: #333;
+}
+
+/* Cancel edit button */
+.btn-edit-cancel {
+    background: transparent;
+    border: 1px solid #ddd;
+    color: #bbb;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.btn-edit-cancel:hover {
+    border-color: #000;
+    color: #000;
+}
+
+/* Filter overlay edit button */
+.btn-edit-filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    cursor: pointer;
+    transition: 0.2s;
+    height: 100%;
+    width: 30px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.btn-edit-filter:hover {
+    color: #000;
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+.btn-edit-filter svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Filter inline edit row */
+.filter-edit-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr auto;
+    align-items: center;
+    padding: 8px 15px;
+    gap: 6px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #eee;
+    border-left: 2px solid #000;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.filter-edit-row input {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: var(--font-serif);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.filter-edit-row input[type="text"] {
+    font-family: var(--font-sans);
+}
+
+.filter-edit-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.btn-filter-save,
+.btn-filter-cancel {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.btn-filter-save {
+    background: #000;
+    color: #fff;
+}
+
+.btn-filter-save:hover {
+    background: #333;
+}
+
+.btn-filter-cancel {
+    background: transparent;
+    border: 1px solid #ddd;
+    color: #bbb;
+}
+
+.btn-filter-cancel:hover {
+    color: #000;
+    border-color: #000;
+}
+
+/* 5-column filter row to accommodate new edit button */
+.filter-item-row {
+    grid-template-columns: 1.2fr 1.2fr 2fr 30px 30px;
+}
+
+@media (max-width: 700px) {
+    /* Filter 列：5 欄手機版間距 */
+    .filter-item-row {
+        grid-template-columns: 1fr 1fr 1.5fr 28px 28px !important;
+        gap: 2px !important;
+        padding: 10px 6px !important;
+    }
+    
+    /* Filter 編輯按鈕 - 觸控優化 */
+    .btn-edit-filter {
+        width: 28px !important;
+        min-width: 28px;
+    }
+    .btn-edit-filter svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    
+    /* Filter 跳轉按鈕 - 觸控優化 */
+    .btn-jump-date {
+        width: 28px !important;
+        min-width: 28px;
+    }
+    
+    /* Filter inline 編輯行 - 堆疊佈局 */
+    .filter-edit-row {
+        grid-template-columns: 1fr 1fr !important;
+        padding: 10px 8px !important;
+        gap: 6px !important;
+        border-left: 2px solid #000;
+    }
+    
+    /* 備註欄位跨兩欄 */
+    .filter-edit-row .fe-note {
+        grid-column: 1 / -1 !important;
+    }
+    
+    /* 操作按鈕區跨兩欄、靠右 */
+    .filter-edit-actions {
+        grid-column: 1 / -1 !important;
+        justify-content: flex-end !important;
+    }
+    
+    /* 增大 filter 編輯 input 觸控範圍 */
+    .filter-edit-row input {
+        height: 36px !important;
+        font-size: 0.9rem !important;
+        padding: 6px 10px !important;
+    }
+    
+    /* 增大 filter 儲存/取消按鈕 */
+    .btn-filter-save,
+    .btn-filter-cancel {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Timeline 編輯模式 input 行 */
+    .quick-input.edit-mode {
+        padding-left: 4px !important;
+        border-left: 2px solid #000;
+        background: #f9f9f9 !important;
+    }
+    
+    /* 取消按鈕 - 手機版加大觸控 */
+    .btn-edit-cancel {
+        width: 40px !important;
+        height: 40px !important;
+        flex: 0 0 40px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Update 模式的新增按鈕保持與新增按鈕一致的手機尺寸 */
+    .btn-quick-add.update-mode {
+        width: 40px !important;
+        height: 40px !important;
+        flex: 0 0 40px !important;
+    }
 }
