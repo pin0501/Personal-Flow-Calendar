@@ -7,7 +7,7 @@
     <title>Personal Flow Calendar</title>
     <script>
         // [CONFIG] 全域版本號控制
-        window.APP_VERSION = '1.3.0'; // 更新版號時改這裡即可
+        window.APP_VERSION = '1.3.1'; // 更新版號時改這裡即可
 
         // 1. 動態載入 CSS (不會卡住畫面)
         var link = document.createElement('link');
@@ -18,11 +18,11 @@
         // 2. 動態載入 JS (關鍵在於 defer)
         var script = document.createElement('script');
         script.src = 'app.js?v=' + window.APP_VERSION;
-        
+
         // [重要] defer = true 
         // 這告訴瀏覽器：背景下載這個 JS，但等到 HTML 全部解析完才執行。
         // 這樣可以確保 JS 執行時，網頁上的按鈕、選單都已經存在了。
-        script.defer = true; 
+        script.defer = true;
         document.body.appendChild(script);
     </script>
 
@@ -37,7 +37,8 @@
 </head>
 
 <body>
-    <div id="inAppBrowserOverlay" class="overlay hidden" style="z-index: 9999; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px;">
+    <div id="inAppBrowserOverlay" class="overlay hidden"
+        style="z-index: 9999; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px;">
         <div style="position: absolute; top: 20px; right: 20px; font-size: 3rem; animation: bounce 1s infinite;">
             ↗
         </div>
@@ -47,7 +48,8 @@
             <br><br>
             Please tap the <b>Menu icon</b> (top right or bottom) and select:
             <br>
-            <b style="color: #fff; border-bottom: 1px solid #fff; display: inline-block; margin-top: 10px;">Open in Browser</b>
+            <b style="color: #fff; border-bottom: 1px solid #fff; display: inline-block; margin-top: 10px;">Open in
+                Browser</b>
         </p>
     </div>
     <div class="app-container">
@@ -99,32 +101,37 @@
                     <div class="flow-auth-container">
                         <div class="flow-selector" id="flowSelectorBtn">
                             <input type="text" id="flowNameInput" class="flow-name-input hidden" autocomplete="off">
-                            
+
                             <span id="currentFlowName" class="editable-name" title="Click to rename">Prime Flow</span>
-                            
+
                             <span id="btnFlowSave" class="flow-save-btn hidden" title="Save">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                    <path d="M19 5.5C19 4.67 17.66 4.67 17.66 5.5V11.5C17.66 12.3 17.2 13 16.4 13H7.5L10.2 10.3C10.6 9.9 10.6 9.3 10.2 8.9L9.5 8.2C9.1 7.8 8.5 7.8 8.1 8.2L3.3 13C2.9 13.4 2.9 14 3.3 14.4L8.1 19.2C8.5 19.6 9.1 19.6 9.5 19.2L10.2 18.5C10.6 18.1 10.6 17.5 10.2 17.1L7.5 14.4H16.4C18.4 14.4 20 12.8 20 10.8V5.5H19Z"></path>
+                                    <path
+                                        d="M19 5.5C19 4.67 17.66 4.67 17.66 5.5V11.5C17.66 12.3 17.2 13 16.4 13H7.5L10.2 10.3C10.6 9.9 10.6 9.3 10.2 8.9L9.5 8.2C9.1 7.8 8.5 7.8 8.1 8.2L3.3 13C2.9 13.4 2.9 14 3.3 14.4L8.1 19.2C8.5 19.6 9.1 19.6 9.5 19.2L10.2 18.5C10.6 18.1 10.6 17.5 10.2 17.1L7.5 14.4H16.4C18.4 14.4 20 12.8 20 10.8V5.5H19Z">
+                                    </path>
                                 </svg>
                             </span>
 
                             <span class="dropdown-arrow" id="flowDropdownArrow">▾</span>
-                            
-                            <div id="btnFlowSettings" class="btn-nav-icon" title="Flow Currency" style="margin-left: 8px; border:none; padding: 4px;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+                            <div id="btnFlowSettings" class="btn-nav-icon" title="Flow Currency"
+                                style="margin-left: 8px; border:none; padding: 4px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="1" x2="12" y2="23"></line>
                                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                 </svg>
                             </div>
 
                         </div>
-                        
+
                         <div id="flowDropdown" class="flow-dropdown hidden">
                             <div id="flowListContainer"></div>
                             <div class="flow-dropdown-footer">
                                 <div class="flow-action" id="btnAddFlow">+ New Flow</div>
                                 <div id="btnToggleEditFlow" class="btn-flow-edit-mode" title="Manage Flows">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                                     </svg>
                                 </div>
@@ -188,12 +195,14 @@
 
             <div class="equation-wrapper" id="footerEquationWrapper">
                 <div id="forecastContainer">
-                    <div class="summary-label-group" style="display:flex; align-items:center; gap:6px; justify-content:center; margin-bottom: 4px;">
+                    <div class="summary-label-group"
+                        style="display:flex; align-items:center; gap:6px; justify-content:center; margin-bottom: 4px;">
                         <div class="summary-label" id="summaryLabel">TOTAL FORECAST</div>
-                        
-                        <div id="viewCurrencyBadge" class="currency-badge hidden" style="font-size: 0.75rem; padding: 4px 8px;">TWD</div>
+
+                        <div id="viewCurrencyBadge" class="currency-badge hidden"
+                            style="font-size: 0.75rem; padding: 4px 8px;">TWD</div>
                     </div>
-                    
+
                     <div class="equation-container">
                         <div class="eq-item income"><span class="eq-val" id="summaryIncome">$0</span></div>
                         <span class="eq-operator">-</span>
@@ -226,7 +235,8 @@
                 </div>
 
                 <div id="btnOpenRecurringFooter" class="btn-footer-action primary" title="Add Recurring Rule">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                         <path d="M3 3v5h5"></path>
                     </svg>
@@ -252,13 +262,15 @@
 
                 <div class="recur-input-group">
                     <div class="input-with-currency">
-                        <input type="number" id="recurAmount" class="recur-input amount" placeholder="$0" style="border:none; border-radius:0;">
-                        <div id="recurCurrencyWrapper" class="custom-select-wrapper" style="width: 65px; min-width: 65px;">
+                        <input type="number" id="recurAmount" class="recur-input amount" placeholder="$0"
+                            style="border:none; border-radius:0;">
+                        <div id="recurCurrencyWrapper" class="custom-select-wrapper"
+                            style="width: 65px; min-width: 65px;">
                             <div id="recurCurrencyTrigger" class="custom-select-trigger embedded">
                                 <span id="recurCurrencyText">TWD</span>
                             </div>
                             <div id="recurCurrencyOptions" class="custom-select-options hidden">
-                                </div>
+                            </div>
                         </div>
                     </div>
                     <input type="text" id="recurNote" class="recur-input" placeholder="Note">
@@ -283,7 +295,8 @@
                         </div>
                     </div>
 
-                    <div id="optMonthly" class="freq-option-panel hidden" style="flex-direction: column; gap: 5px; padding: 5px 0;">
+                    <div id="optMonthly" class="freq-option-panel hidden"
+                        style="flex-direction: column; gap: 5px; padding: 5px 0;">
                         <div class="month-inputs-container" id="monthInputsWrapper">
                             <input type="number" class="recur-month-input-circle m-day-slot" value="1" min="1" max="31">
                             <div class="btn-add-month-day" id="btnAddMonthDay">+</div>
@@ -299,11 +312,13 @@
                 <div class="recur-date-range recur-date-group">
                     <div class="date-field-group">
                         <label class="summary-label" style="margin-bottom: 4px; text-align: left;">STARTS</label>
-                        <input type="text" id="recurStartDate" class="recur-input minimal-date" placeholder="Select Date" readonly style="cursor: pointer;">
+                        <input type="text" id="recurStartDate" class="recur-input minimal-date"
+                            placeholder="Select Date" readonly style="cursor: pointer;">
                     </div>
                     <div class="date-field-group">
                         <label class="summary-label" style="margin-bottom: 4px; text-align: left;">ENDS</label>
-                        <input type="text" id="recurEndDate" class="recur-input minimal-date" placeholder="Select Date" readonly style="cursor: pointer;">
+                        <input type="text" id="recurEndDate" class="recur-input minimal-date" placeholder="Select Date"
+                            readonly style="cursor: pointer;">
                     </div>
                 </div>
 
@@ -325,7 +340,8 @@
         </div>
         <div class="filter-controls">
             <div class="filter-search-wrapper">
-                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
@@ -345,13 +361,13 @@
     <div id="dateRangeOverlay" class="overlay hidden" style="z-index: 350;">
         <div class="picker-card">
             <div class="picker-header">
-                <div class="overlay-title" id="pickerTitleLabel" style="display:none;">SELECT RANGE</div> 
-                
+                <div class="overlay-title" id="pickerTitleLabel" style="display:none;">SELECT RANGE</div>
+
                 <div class="picker-nav-controls">
                     <button id="btnCalPrev" class="nav-btn">←</button>
-                    
+
                     <div class="picker-months-label clickable" id="pickerMonthsLabel">2025 / 01</div>
-                    
+
                     <button id="btnCalNext" class="nav-btn">→</button>
                 </div>
 
@@ -379,7 +395,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="picker-body">
                 <div class="calendar-wrapper">
                     <div class="cal-pane" id="calLeft"></div>
@@ -446,46 +462,60 @@
 
             <div class="profile-actions">
                 <div class="action-group-title">Data Management</div>
-                
+
                 <button id="btnExportJson" class="btn-profile-action">
                     <span>Backup Data (.json)</span>
-                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
                 </button>
 
                 <button id="btnImportJson" class="btn-profile-action">
                     <span>Restore Backup</span>
-                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
                 </button>
                 <input type="file" id="importFileInput" accept=".json" style="display: none;">
 
                 <div class="action-group-title" style="margin-top: 10px;">Account</div>
-                
+
                 <button id="btnLogout" class="btn-profile-action danger">
                     <span>Sign Out</span>
-                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
                 </button>
             </div>
-            
+
             <div class="app-version" id="dispAppVersion">Personal Flow v1.2</div>
         </div>
     </div>
 
     <div id="syncOverlay" class="overlay hidden" style="z-index: 400;">
         <div class="login-card">
-            <div class="overlay-title clean-font" style="color: #000; margin-bottom: 10px; text-align: center; margin-top: 20px;">
+            <div class="overlay-title clean-font"
+                style="color: #000; margin-bottom: 10px; text-align: center; margin-top: 20px;">
                 UNSAVED FLOWS
             </div>
             <p class="login-desc" style="margin-bottom: 20px; font-size: 0.9rem; color: #666;">
                 Local data found. Select flows to merge <br>into your account.
             </p>
-            
+
             <div id="syncFlowList" class="sync-list-container"></div>
 
             <div class="sync-actions">
                 <button id="btnSyncConfirm" class="btn-black" style="width: 100%; margin-top: 20px;">
                     SAVE SELECTED &amp; SYNC
                 </button>
-                <button id="btnSyncDiscardAll" class="btn-text-only" style="margin-top: 10px; width: 100%; color: #999; font-size: 0.8rem; background:none; border:none; cursor:pointer;">
+                <button id="btnSyncDiscardAll" class="btn-text-only"
+                    style="margin-top: 10px; width: 100%; color: #999; font-size: 0.8rem; background:none; border:none; cursor:pointer;">
                     Discard all local data
                 </button>
             </div>
@@ -526,7 +556,8 @@
         window.doc = doc;
         window.setDoc = setDoc;
         window.getDoc = getDoc;
-    </script> <script>
+    </script>
+    <script>
         document.write(`<script src="app.js?v=${APP_VERSION}"><\/script>`);
     </script>
 
@@ -537,14 +568,15 @@
                 <div id="btnFlowSettingsClose" class="btn-close-card">✕</div>
             </div>
             <div class="recur-form-body" style="padding: 20px;">
-                <div class="setting-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div class="setting-row"
+                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <span style="font-weight:700; font-size:0.9rem;">Multi-Currency Mode</span>
                     <label class="switch">
                         <input type="checkbox" id="toggleMultiCurrency">
                         <span class="slider round"></span>
                     </label>
                 </div>
-                
+
                 <div id="multiCurrencyConfigPanel" class="hidden">
                     <div style="height: 1px; background: #eee; margin: 15px 0 20px 0;"></div>
 
@@ -553,9 +585,9 @@
                     </p>
 
                     <div class="unified-currency-list" id="unifiedCurrencyList">
-                        </div>
+                    </div>
                 </div>
-                
+
                 <div style="margin-top:20px; font-size:0.7rem; color:#ccc; text-align:center;">
                     Rates provided by ExchangeRate-API
                 </div>
@@ -565,18 +597,22 @@
 
     <div id="systemToast" class="system-toast">Notification</div>
 
-    <div id="currencyConvertOverlay" class="overlay hidden" style="z-index: 700; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+    <div id="currencyConvertOverlay" class="overlay hidden"
+        style="z-index: 700; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
         <div class="conv-card">
             <div class="conv-title">DISABLE MULTI-CURRENCY?</div>
-            
+
             <p class="conv-desc" style="margin-bottom: 10px;">
                 Your transactions use the following currencies:
                 <br>
-                <span id="convCurrencyList" style="font-weight: 700; color: #000; display: block; margin-top: 6px;"></span>
+                <span id="convCurrencyList"
+                    style="font-weight: 700; color: #000; display: block; margin-top: 6px;"></span>
             </p>
-            
+
             <div class="form-group" style="text-align: left; margin-bottom: 20px;">
-                <label style="font-size: 0.7rem; font-weight: 700; color: #999; margin-bottom: 6px; display: block;">CONVERT ALL AMOUNTS TO</label>
+                <label
+                    style="font-size: 0.7rem; font-weight: 700; color: #999; margin-bottom: 6px; display: block;">CONVERT
+                    ALL AMOUNTS TO</label>
                 <select id="selConvTarget" class="conv-select"></select>
             </div>
 

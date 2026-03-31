@@ -1562,7 +1562,9 @@ function renderInlineDetails(wrapper, dateStr) {
                 ${expDropdown}
             </div>
             <input type="text" class="quick-input-field note" id="note-${dateStr}" placeholder="Note">
-            <button class="btn-quick-add">+</button>
+            <div class="qi-actions">
+                <button class="btn-quick-add">+</button>
+            </div>
         `;
 
         if (multiCurrencyEnabled) {

@@ -863,6 +863,14 @@ body {
     margin-top: 10px;
 }
 
+/* Flex container for add/update buttons in quick input */
+.qi-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
 .btn-quick-add {
     width: 32px;
     height: 32px;
@@ -3198,13 +3206,20 @@ body {
         padding-left: 8px !important; /* 文字稍微往內縮 */
     }
 
-    /* 5. 新增按鈕 (第二行最右邊) */
+    /* 5. 新增與動作按鈕容器 (第二行最右邊) */
+    .qi-actions {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        flex: 0 0 auto !important;
+    }
+
     .btn-quick-add {
         border-radius: 50% !important;
         width: 40px !important;
         height: 40px !important;
         flex: 0 0 40px !important;
-        margin-left: 0 !important;
         font-size: 1.4rem !important;
         display: flex !important;
         align-items: center;
@@ -5672,6 +5687,7 @@ input[type=number] {
 .quick-input.edit-mode {
     background: #f9f9f9;
     border-left: 2px solid #000;
+    grid-template-columns: var(--grid-def-edit, 90px 1fr 1fr 1.3fr 75px);
 }
 
 /* Update button style (replaces + button) */
