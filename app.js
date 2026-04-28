@@ -647,6 +647,7 @@ function finalizeMultiCurrencyEnable(targetCurrencyForOldData = null) {
             return t;
         });
         setCurrentTransactions(newTxs);
+        refreshAfterTransactionsChanged({ changedDates: newTxs.map(tx => tx.date) });
         showSystemToast(`Old transactions tagged as ${targetCurrencyForOldData}`);
     }
 
@@ -749,6 +750,7 @@ function showConvertOverlay(mode, defaultTarget, usedCurrenciesSet = null, allow
             if(baseSel) baseSel.value = targetCurrency;
 
             updateUIForCurrency();
+            refreshAfterTransactionsChanged({ changedDates: newTxs.map(tx => tx.date) });
             overlay.classList.add('hidden');
             showSystemToast(`Converted all to ${targetCurrency}`);
         };
@@ -1926,6 +1928,36 @@ function updateFooterEditor(dateStr) {
 }
         
 // --- Unified Transaction Operations ---
+function refreshAfterTransactionsChanged({ dateStr = null, changedDates = [], rowWrapper = null } = {}) {
+    const dates = [...new Set([dateStr, ...changedDates].filter(Boolean))];
+
+    updateTotalForecast();
+
+    if (currentViewMode === 'timeline') {
+        dates.forEach(d => {
+            const wrapper = rowWrapper?.dataset?.date === d
+                ? rowWrapper
+                : document.querySelector(`.row-wrapper[data-date="${d}"]`);
+            if (wrapper) refreshRowDisplay(wrapper, d, { skipFooter: true });
+        });
+    } else {
+        if (dates.length === 0) {
+            renderMainCalendarGrid();
+        } else {
+            dates.forEach(d => refreshCalendarCell(d));
+        }
+
+        const editingDate = selectedCalendarDateStr || getEl('editorDateLabel')?.textContent;
+        if (editingDate && footerDayEditor && !footerDayEditor.classList.contains('hidden')) {
+            updateFooterEditor(editingDate);
+        }
+    }
+
+    if (filterOverlay && !filterOverlay.classList.contains('hidden')) {
+        renderFilterList();
+    }
+}
+
 function addTransactionUnified(dateStr, source, rowWrapper = null) {
     const flowSettings = getFlowSettings();
     const baseCurrency = (flowSettings && flowSettings.base) ? flowSettings.base : DEFAULT_FLOW_SETTINGS.base;
@@ -1975,8 +2007,7 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
         // Reset edit state
         cancelEditTransaction(dateStr, rowWrapper);
         const targetWrapper = rowWrapper || document.querySelector(`.row-wrapper[data-date="${dateStr}"]`);
-        refreshRowDisplay(targetWrapper, dateStr);
-        updateTotalForecast();
+        refreshAfterTransactionsChanged({ dateStr, rowWrapper: targetWrapper });
         showUndoToast(null, 'Transaction updated');
         return;
     }
@@ -1991,15 +2022,13 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
     setCurrentTransactions(transactions);
     if (source === 'footer') {
         getEl('footerInc').value = ''; getEl('footerExp').value = ''; getEl('footerNote').value = '';
-        updateFooterEditor(dateStr);
-        refreshCalendarCell(dateStr);
-        updateTotalForecast();
+        refreshAfterTransactionsChanged({ dateStr });
     } else {
         document.getElementById(`inc-${dateStr}`).value = '';
         document.getElementById(`exp-${dateStr}`).value = '';
         document.getElementById(`note-${dateStr}`).value = '';
         const targetWrapper = rowWrapper || document.querySelector(`.row-wrapper[data-date="${dateStr}"]`);
-        refreshRowDisplay(targetWrapper, dateStr);
+        refreshAfterTransactionsChanged({ dateStr, rowWrapper: targetWrapper });
     }
 }
 
@@ -2010,18 +2039,7 @@ function deleteTransaction(txId, dateStr, rowWrapper = null) {
     const tx = transactions[txIndex];
     const newTransactions = transactions.filter(x => x.id !== txId);
     setCurrentTransactions(newTransactions);
-    if (currentViewMode === 'timeline') {
-        if (rowWrapper) refreshRowDisplay(rowWrapper, dateStr);
-        else refreshRowDisplay(document.querySelector(`.row-wrapper[data-date="${dateStr}"]`), dateStr);
-    } else {
-        updateFooterEditor(dateStr);
-        if (typeof refreshCalendarCell === 'function') {
-            refreshCalendarCell(dateStr);
-        } else {
-            renderMainCalendarGrid();
-        }
-    }
-    updateTotalForecast();
+    refreshAfterTransactionsChanged({ dateStr, rowWrapper });
     showUndoToast({ type: 'tx', tx, dateStr }, 'Transaction deleted');
 }
 
@@ -2114,45 +2132,29 @@ function performUndo() {
         // Re-add all deleted transactions
         txs.forEach(tx => currentTxs.push(tx));
         setCurrentTransactions(currentTxs);
-        
-        // Refresh View
-        if (currentViewMode === 'timeline') {
-            resetViewAroundDate(currentNavDate, 'auto');
-        } else {
-            renderMainCalendarGrid();
-        }
+        refreshAfterTransactionsChanged({ changedDates: txs.map(tx => tx.date) });
     } else {
         const tx = undoData.tx || undoData;
         const dateStr = undoData.dateStr;
         const transactions = getCurrentTransactions();
         transactions.push(tx);
         setCurrentTransactions(transactions);
-        if (currentViewMode === 'timeline') {
-            refreshRowDisplay(document.querySelector(`.row-wrapper[data-date="${dateStr}"]`), dateStr);
-        } else {
-            updateFooterEditor(dateStr);
-            if (typeof refreshCalendarCell === 'function') {
-                refreshCalendarCell(dateStr);
-            } else {
-                renderMainCalendarGrid();
-            }
-        }
+        refreshAfterTransactionsChanged({ dateStr });
     }
-    updateTotalForecast();
     getEl('undoToast').classList.add('hidden');
     undoData = null;
     if (undoTimeout) clearTimeout(undoTimeout);
     if (undoFadeTimeout) clearTimeout(undoFadeTimeout);
 }
 
-function refreshRowDisplay(wrapper, dateStr) {
+function refreshRowDisplay(wrapper, dateStr, options = {}) {
     if (!wrapper) return;
     const { totalIncome, totalExpense, notes } = getDaySummary(dateStr);
     wrapper.querySelector('.sum-income').textContent = totalIncome > 0 ? `+$${totalIncome.toLocaleString()}` : '';
     wrapper.querySelector('.sum-expense').textContent = totalExpense > 0 ? `-$${totalExpense.toLocaleString()}` : '';
     wrapper.querySelector('.row-note-preview').textContent = notes.join(', ');
     renderInlineDetails(wrapper, dateStr);
-    updateTotalForecast();
+    if (!options.skipFooter) updateTotalForecast();
 }
 
 function getDaySummary(dateStr, convert = false, targetCurrency = null) {
@@ -3907,13 +3909,7 @@ function executeRecurringAdd() {
     recurringOverlay?.classList.add('hidden');
     resetRecurringForm();
 
-    if (currentViewMode === 'timeline') {
-        resetViewAroundDate(currentNavDate, 'auto');
-    } else {
-        renderMainCalendarGrid();
-        if (selectedCalendarDateStr) updateFooterEditor(selectedCalendarDateStr);
-    }
-    updateTotalForecast();
+    refreshAfterTransactionsChanged({ changedDates: newTxs.map(tx => tx.date) });
 
     showUndoToast({ type: 'batch', txs: newTxs }, `Added ${newTxs.length} recurring items`);
 }
@@ -3957,10 +3953,9 @@ function openFilterInlineEdit(displayRow, txData, dateStr, groupDiv) {
             transactions[idx].expense = newExp;
             transactions[idx].note = newNote;
             setCurrentTransactions(transactions);
-            updateTotalForecast();
+            refreshAfterTransactionsChanged({ dateStr });
             showUndoToast(null, 'Transaction updated');
         }
-        renderFilterList();
     };
     
     editRow.querySelector('.btn-filter-cancel').onclick = (e) => {
