@@ -239,6 +239,96 @@ function formatCompactNumber(number) {
     return sign + scaled.toFixed(1).replace(/\.0$/, '') + suffix;
 }
 
+function normalizeCurrencyCode(code, fallback = DEFAULT_FLOW_SETTINGS.base) {
+    const normalized = (code || fallback || DEFAULT_FLOW_SETTINGS.base).toString().trim().toUpperCase();
+    return SUPPORTED_CURRENCIES.includes(normalized) ? normalized : (fallback || DEFAULT_FLOW_SETTINGS.base);
+}
+
+function getTxIncomeCurrency(tx, flowSettings = getFlowSettings()) {
+    return normalizeCurrencyCode(tx?.incCurrency || tx?.currency, flowSettings.base);
+}
+
+function getTxExpenseCurrency(tx, flowSettings = getFlowSettings()) {
+    return normalizeCurrencyCode(tx?.expCurrency || tx?.currency, flowSettings.base);
+}
+
+function getEffectiveViewCurrency(settings = getFlowSettings()) {
+    const base = normalizeCurrencyCode(settings.base, DEFAULT_FLOW_SETTINGS.base);
+    const active = getActiveCurrencyList(settings);
+    const requested = normalizeCurrencyCode(tempViewCurrency || base, base);
+    if (active.includes(requested)) return requested;
+    tempViewCurrency = null;
+    return base;
+}
+
+function convertAmountToCurrency(amount, fromCurrency, toCurrency) {
+    const value = parseFloat(amount) || 0;
+    if (!value) return 0;
+    const converted = convertCurrency(value, fromCurrency, toCurrency);
+    return typeof converted === 'number' && !Number.isNaN(converted) ? converted : value;
+}
+
+function formatMoney(amount, currency = null, options = {}) {
+    const {
+        sign = '',
+        compact = true,
+        showCurrency = false,
+        useSymbol = true
+    } = options;
+    const value = parseFloat(amount) || 0;
+    const prefixSign = sign || (value < 0 ? '-' : '');
+    const displayValue = Math.abs(value);
+    const numberText = compact
+        ? formatCompactNumber(displayValue)
+        : displayValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+    const symbol = useSymbol ? '$' : '';
+    const currencyText = showCurrency && currency ? ` ${normalizeCurrencyCode(currency)}` : '';
+    return `${prefixSign}${symbol}${numberText}${currencyText}`;
+}
+
+function formatTransactionAmountHtml(amount, currency, sign, flowSettings, tagClass = 'tx-currency-tag') {
+    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
+    const normalizedCurrency = normalizeCurrencyCode(currency, flowSettings.base);
+    const valueText = formatMoney(amount, normalizedCurrency, {
+        sign,
+        compact: true,
+        showCurrency: false,
+        useSymbol: !multiCurrencyEnabled
+    });
+    const currencyTag = multiCurrencyEnabled ? `<span class="${tagClass}">${normalizedCurrency}</span>` : '';
+    return `${valueText}${currencyTag}`;
+}
+
+function formatSummaryAmountText(amount, currency, sign, flowSettings = getFlowSettings()) {
+    const value = parseFloat(amount) || 0;
+    if (value <= 0) return '';
+    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
+    return formatMoney(value, currency, {
+        sign,
+        compact: true,
+        showCurrency: multiCurrencyEnabled,
+        useSymbol: !multiCurrencyEnabled
+    });
+}
+
+function setCustomDropdownValue(wrapperId, value) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+    const normalizedValue = normalizeCurrencyCode(value);
+    const textSpan = wrapper.querySelector('.custom-select-trigger span');
+    if (textSpan) textSpan.textContent = normalizedValue;
+    wrapper.querySelectorAll('.custom-option').forEach(opt => {
+        const optionValue = normalizeCurrencyCode(opt.dataset.value || opt.textContent, normalizedValue);
+        opt.classList.toggle('selected', optionValue === normalizedValue);
+    });
+}
+
+function getDropdownValue(wrapperId, fallback) {
+    const wrapper = document.getElementById(wrapperId);
+    const text = wrapper?.querySelector('.custom-select-trigger span')?.textContent;
+    return normalizeCurrencyCode(text, fallback);
+}
+
 // --- Helper: Setup Custom Dropdown Logic ---
 function setupCustomDropdown(wrapperId, onSelectCallback) {
     const wrapper = document.getElementById(wrapperId);
@@ -264,8 +354,10 @@ function setupCustomDropdown(wrapperId, onSelectCallback) {
     options.querySelectorAll('.custom-option').forEach(opt => {
         opt.onclick = (e) => {
             e.stopPropagation();
-            const val = opt.dataset.value;
+            const val = opt.dataset.value || opt.textContent.trim();
             if (textSpan) textSpan.textContent = val;
+            options.querySelectorAll('.custom-option').forEach(item => item.classList.remove('selected'));
+            opt.classList.add('selected');
             options.classList.add('hidden');
             if (onSelectCallback) onSelectCallback(val);
         };
@@ -818,6 +910,7 @@ function updateUIForCurrency(shouldRefresh = true) {
     }
 
     updateTotalForecast();
+    if (userProfileOverlay && !userProfileOverlay.classList.contains('hidden')) openUserProfile();
 }
 
 // [Fix] Footer 點擊切換：只改變檢視 (View Only)，不影響真實資料或 Default
@@ -841,6 +934,8 @@ function cycleViewCurrency() {
     
     // 更新 UI (Footer 數字 & Badge)
     updateTotalForecast();
+    if (currentViewMode === 'timeline') refreshVisibleTimelineSummaries();
+    if (userProfileOverlay && !userProfileOverlay.classList.contains('hidden')) openUserProfile();
     
     // 顯示提示
     showSystemToast(`View: ${nextCurrency} (Converted)`);
@@ -1436,17 +1531,12 @@ function createDayBatch(startDate, daysCount) {
     const fragment = document.createDocumentFragment();
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const flowSettings = getFlowSettings();
-    const viewCur = flowSettings.base || DEFAULT_FLOW_SETTINGS.base;
-    
-    // [新增] 取得多幣種開關狀態
-    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
-    // [修改] 只有開啟時才顯示幣別 HTML
-    const currencyHtml = multiCurrencyEnabled ? ` <small>${viewCur}</small>` : '';
+    const viewCur = getEffectiveViewCurrency(flowSettings);
 
     for (let i = 0; i < daysCount; i++) {
         const d = new Date(startDate); d.setDate(startDate.getDate() + i);
         const dateStr = formatDate(d);
-        const { totalIncome, totalExpense, notes } = getDaySummary(dateStr, true);
+        const { totalIncome, totalExpense, notes } = getDaySummary(dateStr, true, viewCur);
         const wrapper = document.createElement('div');
         wrapper.className = 'row-wrapper';
         wrapper.dataset.date = dateStr;
@@ -1455,10 +1545,8 @@ function createDayBatch(startDate, daysCount) {
         if (d.getDay() === 0 || d.getDay() === 6) wrapper.classList.add('weekend');
         const row = document.createElement('div');
         row.className = 'planning-row grid-layout';
-        
-        // [修改] 使用變數 currencyHtml
-        const incStr = totalIncome > 0 ? `+${formatCompactNumber(totalIncome)}${currencyHtml}` : '';
-        const expStr = totalExpense > 0 ? `-${formatCompactNumber(totalExpense)}${currencyHtml}` : '';
+        const incStr = formatSummaryAmountText(totalIncome, viewCur, '+', flowSettings);
+        const expStr = formatSummaryAmountText(totalExpense, viewCur, '-', flowSettings);
         
         row.innerHTML = `
             <div class="row-date"><span class="date-day">${d.getDate()}</span><span class="date-weekday">${getWeekday(d)}</span></div>
@@ -1481,6 +1569,25 @@ function createDayBatch(startDate, daysCount) {
     return fragment;
 }
 
+function refreshVisibleTimelineSummaries() {
+    document.querySelectorAll('.row-wrapper[data-date]').forEach(wrapper => {
+        refreshRowSummaryOnly(wrapper, wrapper.dataset.date);
+    });
+}
+
+function refreshRowSummaryOnly(wrapper, dateStr) {
+    if (!wrapper || !dateStr) return;
+    const flowSettings = getFlowSettings();
+    const viewCurrency = getEffectiveViewCurrency(flowSettings);
+    const { totalIncome, totalExpense, notes } = getDaySummary(dateStr, true, viewCurrency);
+    const incomeEl = wrapper.querySelector('.sum-income');
+    const expenseEl = wrapper.querySelector('.sum-expense');
+    const notesEl = wrapper.querySelector('.row-note-preview');
+    if (incomeEl) incomeEl.textContent = formatSummaryAmountText(totalIncome, viewCurrency, '+', flowSettings);
+    if (expenseEl) expenseEl.textContent = formatSummaryAmountText(totalExpense, viewCurrency, '-', flowSettings);
+    if (notesEl) notesEl.textContent = notes.join(', ');
+}
+
 function renderInlineDetails(wrapper, dateStr) {
     const list = wrapper.querySelector('.detail-list');
     const { items } = getDaySummary(dateStr, false); 
@@ -1493,16 +1600,10 @@ function renderInlineDetails(wrapper, dateStr) {
         const div = document.createElement('div');
         div.className = 'detail-item grid-layout';
         
-        // 取得幣別，若無則顯示當前 Base
-        const iCur = (item.incCurrency || flowSettings.base).toUpperCase();
-        const eCur = (item.expCurrency || flowSettings.base).toUpperCase();
-        
-        // [強制樣式] 使用 tx-currency-tag
-        const iCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${iCur}</span>` : '';
-        const eCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${eCur}</span>` : '';
-
-        const incTxt = item.income > 0 ? `+${formatCompactNumber(item.income)}${iCurHtml}` : '';
-        const expTxt = item.expense > 0 ? `-${formatCompactNumber(item.expense)}${eCurHtml}` : '';
+        const iCur = getTxIncomeCurrency(item, flowSettings);
+        const eCur = getTxExpenseCurrency(item, flowSettings);
+        const incTxt = item.income > 0 ? formatTransactionAmountHtml(item.income, iCur, '+', flowSettings) : '';
+        const expTxt = item.expense > 0 ? formatTransactionAmountHtml(item.expense, eCur, '-', flowSettings) : '';
         
         div.innerHTML = `
             <div class="detail-spacer"></div>
@@ -1536,7 +1637,7 @@ function renderInlineDetails(wrapper, dateStr) {
         const genDropdownHtml = (id, currentVal) => {
             if (!multiCurrencyEnabled) return '';
             const optionsHtml = getActiveCurrencyList(flowSettings).map(c => 
-                `<div class="custom-option" data-value="${c}">${c}</div>`
+                `<div class="custom-option ${c === currentVal ? 'selected' : ''}" data-value="${c}">${c}</div>`
             ).join('');
             
             return `
@@ -1605,6 +1706,7 @@ function renderInlineDetails(wrapper, dateStr) {
 function startEditTransaction(item, dateStr, wrapper) {
     editingTxId = item.id;
     editingTxDate = dateStr;
+    const flowSettings = getFlowSettings();
     
     const incInput = wrapper.querySelector(`#inc-${dateStr}`);
     const expInput = wrapper.querySelector(`#exp-${dateStr}`);
@@ -1618,6 +1720,10 @@ function startEditTransaction(item, dateStr, wrapper) {
     incInput.value = item.income > 0 ? item.income : '';
     expInput.value = item.expense > 0 ? item.expense : '';
     noteInput.value = item.note || '';
+    if (flowSettings.multiCurrency) {
+        setCustomDropdownValue(`dd-inc-${dateStr}`, getTxIncomeCurrency(item, flowSettings));
+        setCustomDropdownValue(`dd-exp-${dateStr}`, getTxExpenseCurrency(item, flowSettings));
+    }
     incInput.focus();
     
     // Switch button to update mode
@@ -1643,6 +1749,7 @@ function startEditTransaction(item, dateStr, wrapper) {
 function cancelEditTransaction(dateStr, wrapper) {
     editingTxId = null;
     editingTxDate = null;
+    const flowSettings = getFlowSettings();
     
     if (!wrapper) return;
     const incInput = wrapper.querySelector(`#inc-${dateStr}`);
@@ -1655,6 +1762,10 @@ function cancelEditTransaction(dateStr, wrapper) {
     if (incInput) incInput.value = '';
     if (expInput) expInput.value = '';
     if (noteInput) noteInput.value = '';
+    if (flowSettings.multiCurrency) {
+        setCustomDropdownValue(`dd-inc-${dateStr}`, flowSettings.base);
+        setCustomDropdownValue(`dd-exp-${dateStr}`, flowSettings.base);
+    }
     if (addBtn) {
         addBtn.textContent = '+';
         addBtn.classList.remove('update-mode');
@@ -1753,8 +1864,6 @@ function generateCalendarChips(dateStr) {
     
     // [新增] 取得設定
     const flowSettings = getFlowSettings();
-    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
-    const baseCur = flowSettings.base;
 
     let chipsHtml = '';
     if (items.length > 0) {
@@ -1764,13 +1873,8 @@ function generateCalendarChips(dateStr) {
             const note = item.note ? item.note.trim() : '';
             const hasNote = note.length > 0;
             
-            // [新增] 準備極簡幣別標籤 (僅在開啟多幣種時顯示)
-            // 這裡直接取用交易本身的幣別，若無則用 Base
-            const iTxCur = (item.incCurrency || baseCur).toUpperCase();
-            const eTxCur = (item.expCurrency || baseCur).toUpperCase();
-
-            const iCurHtml = multiCurrencyEnabled ? `<span class="cal-currency-tag">${iTxCur}</span>` : '';
-            const eCurHtml = multiCurrencyEnabled ? `<span class="cal-currency-tag">${eTxCur}</span>` : '';
+            const iTxCur = getTxIncomeCurrency(item, flowSettings);
+            const eTxCur = getTxExpenseCurrency(item, flowSettings);
 
             let stateClass = 's-note';
             if (inc > 0 && exp > 0 && hasNote) stateClass = 's-tri';
@@ -1781,13 +1885,12 @@ function generateCalendarChips(dateStr) {
             else if (exp > 0) stateClass = 's-exp';
             
             let valHtml = '';
-            // [修改] 將 iCurHtml / eCurHtml 插入顯示
-            if (inc > 0) valHtml += `<span class="c-inc">+$${formatCompactNumber(inc)}${iCurHtml}</span>`;
+            if (inc > 0) valHtml += `<span class="c-inc">${formatTransactionAmountHtml(inc, iTxCur, '+', flowSettings, 'cal-currency-tag')}</span>`;
             
             // 如果同時有收入與支出，加一個空格避免太擠
             if (inc > 0 && exp > 0) valHtml += ' '; 
 
-            if (exp > 0) valHtml += `<span class="c-exp">-$${formatCompactNumber(exp)}${eCurHtml}</span>`;
+            if (exp > 0) valHtml += `<span class="c-exp">${formatTransactionAmountHtml(exp, eTxCur, '-', flowSettings, 'cal-currency-tag')}</span>`;
             
             chipsHtml += `
                 <div class="m-chip ${stateClass}">
@@ -1879,20 +1982,16 @@ function updateFooterEditor(dateStr) {
         }
         chip.className = `mini-tx-chip ${chipClass}`;
         
-        // [修改] 準備幣別字串
-        const iCur = (item.incCurrency || flowSettings.base).toUpperCase();
-        const eCur = (item.expCurrency || flowSettings.base).toUpperCase();
-        const iCurHtml = multiCurrencyEnabled ? `<small style="font-size:0.7em; opacity:0.7; margin-left:2px;">${iCur}</small>` : '';
-        const eCurHtml = multiCurrencyEnabled ? `<small style="font-size:0.7em; opacity:0.7; margin-left:2px;">${eCur}</small>` : '';
+        const iCur = getTxIncomeCurrency(item, flowSettings);
+        const eCur = getTxExpenseCurrency(item, flowSettings);
 
         let contentHtml = '';
         if (isNoteOnly) {
             contentHtml = `<span class="chip-note" style="max-width: 120px;">${item.note || 'Empty'}</span>`;
         } else {
             let valStr = '';
-            // [修改] 將幣別 HTML 加入顯示字串
-            if (inc > 0) valStr += `<span class="c-inc">+$${inc.toLocaleString()}${iCurHtml}</span> `;
-            if (exp > 0) valStr += `<span class="c-exp">-$${exp.toLocaleString()}${eCurHtml}</span>`;
+            if (inc > 0) valStr += `<span class="c-inc">${formatTransactionAmountHtml(inc, iCur, '+', flowSettings)}</span> `;
+            if (exp > 0) valStr += `<span class="c-exp">${formatTransactionAmountHtml(exp, eCur, '-', flowSettings)}</span>`;
             contentHtml = `
                 <span class="chip-val">${valStr}</span>
                 <span class="chip-note">${item.note || ''}</span>
@@ -1978,7 +2077,7 @@ function addTransactionUnified(dateStr, source, rowWrapper = null) {
         const wrapper = document.getElementById(elementId);
         if (!wrapper) return baseCurrency;
         const span = wrapper.querySelector('.custom-select-trigger span');
-        if (span) return span.textContent.trim();
+        if (span) return normalizeCurrencyCode(span.textContent, baseCurrency);
         return baseCurrency;
     };
 
@@ -2149,10 +2248,7 @@ function performUndo() {
 
 function refreshRowDisplay(wrapper, dateStr, options = {}) {
     if (!wrapper) return;
-    const { totalIncome, totalExpense, notes } = getDaySummary(dateStr);
-    wrapper.querySelector('.sum-income').textContent = totalIncome > 0 ? `+$${totalIncome.toLocaleString()}` : '';
-    wrapper.querySelector('.sum-expense').textContent = totalExpense > 0 ? `-$${totalExpense.toLocaleString()}` : '';
-    wrapper.querySelector('.row-note-preview').textContent = notes.join(', ');
+    refreshRowSummaryOnly(wrapper, dateStr);
     renderInlineDetails(wrapper, dateStr);
     if (!options.skipFooter) updateTotalForecast();
 }
@@ -2166,8 +2262,8 @@ function getDaySummary(dateStr, convert = false, targetCurrency = null) {
 
     items.forEach(t => {
         // 1. 確保幣別代碼為大寫 (處理舊資料 'tw' -> 'TWD')
-        const tIncCur = (t.incCurrency || t.currency || baseCurrency).toUpperCase();
-        const tExpCur = (t.expCurrency || t.currency || baseCurrency).toUpperCase();
+        const tIncCur = getTxIncomeCurrency(t, flowSettings);
+        const tExpCur = getTxExpenseCurrency(t, flowSettings);
         
         const inc = parseFloat(t.income) || 0;
         const exp = parseFloat(t.expense) || 0;
@@ -2176,8 +2272,8 @@ function getDaySummary(dateStr, convert = false, targetCurrency = null) {
         if (convert) {
             // 如果需要換算 (用於 Summary)，強制轉成 Base Currency
             // [Fix] 這裡原本直接加總，現在改為先換算
-            totalIncome += convertCurrency(inc, tIncCur, baseCurrency);
-            totalExpense += convertCurrency(exp, tExpCur, baseCurrency);
+            totalIncome += convertAmountToCurrency(inc, tIncCur, baseCurrency);
+            totalExpense += convertAmountToCurrency(exp, tExpCur, baseCurrency);
         } else {
             // 如果不需要換算 (用於原始資料讀取)，直接加總 (雖然意義不大，但保留行為)
             totalIncome += inc;
@@ -2200,7 +2296,7 @@ function updateTotalForecast() {
     if (!incEl || !expEl || !balEl) return;
 
     const settings = getFlowSettings();
-    const viewCurrency = settings.base || DEFAULT_FLOW_SETTINGS.base;
+    const viewCurrency = getEffectiveViewCurrency(settings);
 
     const badge = getEl('viewCurrencyBadge');
     if (badge) {
@@ -2211,14 +2307,6 @@ function updateTotalForecast() {
             badge.classList.add('hidden');
         }
     }
-
-    const convertToView = (amount, currency) => {
-        const val = parseFloat(amount) || 0;
-        if (val === 0) return 0;
-        const txCur = currency || viewCurrency;
-        const converted = convertCurrency(val, txCur, viewCurrency);
-        return typeof converted === 'number' && !Number.isNaN(converted) ? converted : val;
-    };
 
     let filteredTrans = trans;
     if (summaryMode === 'current') {
@@ -2246,19 +2334,22 @@ function updateTotalForecast() {
 
     filteredTrans.forEach(t => {
         if (t.income) {
-            const tIncCur = t.incCurrency || t.currency || viewCurrency;
-            totalInc += convertToView(t.income, tIncCur);
+            totalInc += convertAmountToCurrency(t.income, getTxIncomeCurrency(t, settings), viewCurrency);
         }
         if (t.expense) {
-            const tExpCur = t.expCurrency || t.currency || viewCurrency;
-            totalExp += convertToView(t.expense, tExpCur);
+            totalExp += convertAmountToCurrency(t.expense, getTxExpenseCurrency(t, settings), viewCurrency);
         }
     });
 
     const balance = totalInc - totalExp;
-    incEl.textContent = formatCompactNumber(totalInc);
-    expEl.textContent = formatCompactNumber(totalExp);
-    balEl.textContent = formatCompactNumber(balance);
+    const moneyOptions = {
+        compact: true,
+        showCurrency: !!settings.multiCurrency,
+        useSymbol: !settings.multiCurrency
+    };
+    incEl.textContent = formatMoney(totalInc, viewCurrency, moneyOptions);
+    expEl.textContent = formatMoney(totalExp, viewCurrency, moneyOptions);
+    balEl.textContent = formatMoney(balance, viewCurrency, moneyOptions);
 }
 
 // --- User Profile & Data Management ---
@@ -2281,29 +2372,34 @@ function openUserProfile() {
     };
     let grandTotalBalance = 0;
     let flowCount = 0;
+    const profileViewCurrency = getEffectiveViewCurrency(getFlowSettings());
     if (appData.flows) {
         const flowKeys = Object.keys(appData.flows);
         flowCount = flowKeys.length;
         flowKeys.forEach(key => {
             const flow = appData.flows[key];
             if (flow.transactions) {
+                const flowSettings = getFlowSettings(key);
                 const flowBalance = flow.transactions.reduce((sum, tx) => {
                     const inc = parseFloat(tx.income) || 0;
                     const exp = parseFloat(tx.expense) || 0;
-                    return sum + (inc - exp);
+                    const incCurrency = getTxIncomeCurrency(tx, flowSettings);
+                    const expCurrency = getTxExpenseCurrency(tx, flowSettings);
+                    return sum
+                        + convertAmountToCurrency(inc, incCurrency, profileViewCurrency)
+                        - convertAmountToCurrency(exp, expCurrency, profileViewCurrency);
                 }, 0);
                 grandTotalBalance += flowBalance;
             }
         });
     }
     const elTotalBalance = getEl('statTotalBalance');
-    const formattedBalance = Math.abs(grandTotalBalance).toLocaleString('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+    elTotalBalance.textContent = formatMoney(grandTotalBalance, profileViewCurrency, {
+        sign: grandTotalBalance >= 0 ? '+' : '',
+        compact: true,
+        showCurrency: true,
+        useSymbol: false
     });
-    elTotalBalance.textContent = (grandTotalBalance < 0 ? "-" : "+") + formattedBalance;
     if (grandTotalBalance > 0) {
         elTotalBalance.style.color = 'var(--income-color)';
     } else if (grandTotalBalance < 0) {
@@ -2958,8 +3054,6 @@ function renderFilterList() {
     if (!c) return;
     c.innerHTML = '';
     const flowSettings = getFlowSettings();
-    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
-    const baseCur = flowSettings.base;
     let t = getCurrentTransactions();
     if (filterType !== 'all') {
         t = t.filter(x => {
@@ -3003,14 +3097,10 @@ function renderFilterList() {
         groups[dateStr].forEach(i => {
             const row = document.createElement('div');
             row.className = 'filter-item-row';
-            const iTxCur = (i.incCurrency || baseCur).toUpperCase();
-            const eTxCur = (i.expCurrency || baseCur).toUpperCase();
-            
-            const iCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${iTxCur}</span>` : '';
-            const eCurHtml = multiCurrencyEnabled ? `<span class="tx-currency-tag">${eTxCur}</span>` : '';
-
-            const incStr = i.income > 0 ? `+$${formatCompactNumber(i.income)}${iCurHtml}` : '';
-            const expStr = i.expense > 0 ? `-$${formatCompactNumber(i.expense)}${eCurHtml}` : '';
+            const iTxCur = getTxIncomeCurrency(i, flowSettings);
+            const eTxCur = getTxExpenseCurrency(i, flowSettings);
+            const incStr = i.income > 0 ? formatTransactionAmountHtml(i.income, iTxCur, '+', flowSettings) : '';
+            const expStr = i.expense > 0 ? formatTransactionAmountHtml(i.expense, eTxCur, '-', flowSettings) : '';
             row.innerHTML = `
                 <div class="f-amt income">${incStr}</div>
                 <div class="f-amt expense">${expStr}</div>
@@ -3919,12 +4009,41 @@ function openFilterInlineEdit(displayRow, txData, dateStr, groupDiv) {
     // Remove any existing edit row
     const existingEdit = groupDiv.querySelector('.filter-edit-row');
     if (existingEdit) existingEdit.remove();
+    const flowSettings = getFlowSettings();
+    const multiCurrencyEnabled = !!flowSettings.multiCurrency;
+    const incCurrency = getTxIncomeCurrency(txData, flowSettings);
+    const expCurrency = getTxExpenseCurrency(txData, flowSettings);
+    const incDropdownId = `filterDdInc-${txData.id}`;
+    const expDropdownId = `filterDdExp-${txData.id}`;
+    const dropdownHtml = (id, selectedCurrency) => {
+        if (!multiCurrencyEnabled) return '';
+        const optionsHtml = getActiveCurrencyList(flowSettings).map(code => {
+            const selectedClass = code === selectedCurrency ? 'selected' : '';
+            return `<div class="custom-option ${selectedClass}" data-value="${code}">${code}</div>`;
+        }).join('');
+        return `
+            <div id="${id}" class="custom-select-wrapper mini">
+                <div class="custom-select-trigger"><span>${selectedCurrency}</span></div>
+                <div class="custom-select-options hidden">${optionsHtml}</div>
+            </div>
+        `;
+    };
+    const moneyInputHtml = (type, value, placeholder, dropdownId, selectedCurrency) => {
+        const input = `<input type="number" class="fe-${type}" value="${value || ''}" placeholder="${placeholder}" min="0">`;
+        if (!multiCurrencyEnabled) return input;
+        return `
+            <div class="input-with-currency filter-currency-input">
+                ${input}
+                ${dropdownHtml(dropdownId, selectedCurrency)}
+            </div>
+        `;
+    };
     
     const editRow = document.createElement('div');
     editRow.className = 'filter-edit-row';
     editRow.innerHTML = `
-        <input type="number" class="fe-inc" value="${txData.income || ''}" placeholder="Inc" min="0">
-        <input type="number" class="fe-exp" value="${txData.expense || ''}" placeholder="Exp" min="0">
+        ${moneyInputHtml('inc', txData.income, 'Inc', incDropdownId, incCurrency)}
+        ${moneyInputHtml('exp', txData.expense, 'Exp', expDropdownId, expCurrency)}
         <input type="text" class="fe-note" value="${txData.note || ''}" placeholder="Note">
         <div class="filter-edit-actions">
             <button class="btn-filter-save" title="Save">✓</button>
@@ -3936,6 +4055,10 @@ function openFilterInlineEdit(displayRow, txData, dateStr, groupDiv) {
     displayRow.after(editRow);
     displayRow.style.display = 'none';
     
+    if (multiCurrencyEnabled) {
+        setupCustomDropdown(incDropdownId);
+        setupCustomDropdown(expDropdownId);
+    }
     editRow.querySelector('.fe-inc').focus();
     
     editRow.querySelector('.btn-filter-save').onclick = (e) => {
@@ -3952,6 +4075,10 @@ function openFilterInlineEdit(displayRow, txData, dateStr, groupDiv) {
             transactions[idx].income = newInc;
             transactions[idx].expense = newExp;
             transactions[idx].note = newNote;
+            if (multiCurrencyEnabled) {
+                transactions[idx].incCurrency = getDropdownValue(incDropdownId, incCurrency);
+                transactions[idx].expCurrency = getDropdownValue(expDropdownId, expCurrency);
+            }
             setCurrentTransactions(transactions);
             refreshAfterTransactionsChanged({ dateStr });
             showUndoToast(null, 'Transaction updated');

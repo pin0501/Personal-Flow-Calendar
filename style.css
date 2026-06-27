@@ -5790,6 +5790,21 @@ input[type=number] {
     font-family: var(--font-sans);
 }
 
+.filter-edit-row .filter-currency-input {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+}
+
+.filter-edit-row .filter-currency-input input {
+    border: none;
+    padding: 6px 8px;
+}
+
+.filter-edit-row .filter-currency-input .custom-select-wrapper.mini {
+    min-width: 46px;
+}
+
 .filter-edit-actions {
     display: flex;
     gap: 4px;
@@ -5885,6 +5900,10 @@ input[type=number] {
         height: 36px !important;
         font-size: 0.9rem !important;
         padding: 6px 10px !important;
+    }
+
+    .filter-edit-row .filter-currency-input {
+        height: 36px !important;
     }
     
     /* 增大 filter 儲存/取消按鈕 */
