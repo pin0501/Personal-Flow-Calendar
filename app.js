@@ -4,11 +4,11 @@ const SYNC_TIME_KEY = 'flow_last_sync_time'; // [New] 用來追蹤同步狀態
 const BATCH_SIZE = 90;
 const PAST_BUFFER_DAYS = 90;
 const FUTURE_BUFFER_DAYS = 180;
-const SUPPORTED_CURRENCIES = ['USD', 'TWD', 'HKD', 'JPY', 'CNY', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'NZD', 'ZAR', 'CHF', 'SEK', 'THB', 'IDR', 'PHP', 'TRY'];
+const SUPPORTED_CURRENCIES = ['USD', 'TWD', 'HKD', 'JPY', 'CNY', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'MYR', 'NZD', 'ZAR', 'CHF', 'SEK', 'THB', 'IDR', 'PHP', 'TRY'];
 // [Config] Map Currency to Country Code for FlagCDN
 const CURRENCY_COUNTRY_MAP = {
     USD: 'us', TWD: 'tw', HKD: 'hk', JPY: 'jp', CNY: 'cn',
-    EUR: 'eu', GBP: 'gb', AUD: 'au', CAD: 'ca', SGD: 'sg',
+    EUR: 'eu', GBP: 'gb', AUD: 'au', CAD: 'ca', SGD: 'sg', MYR: 'my',
     NZD: 'nz', ZAR: 'za', CHF: 'ch', SEK: 'se', THB: 'th',
     IDR: 'id', PHP: 'ph', TRY: 'tr'
 };
